@@ -131,3 +131,5 @@ dmypy.json
 # my secret file
 config.py
 doc/
+.sqlite3
+tmp/

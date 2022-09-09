@@ -1,7 +1,8 @@
 import json
+import time
 from flask import jsonify, request
 from flask_app import flask_app
-from model import db, User
+from model import db, User, PhishingInfo, BotnetInfo
 
 
 @flask_app.route('/register/', methods=['POST'])
@@ -51,8 +52,8 @@ def subscribe():
         content = data.get('content')
         uid = data.get('uid')
         if username and dtype and content and uid:
-            user = db.session.query(User).filter(
-                User.username == username, User.uid == uid).first()
+            user = db.session.query(User).filter(User.username == username,
+                                                 User.uid == uid).first()
             user.subscribe_type = dtype
             user.subscribe_content = str(content)
             return jsonify({'code': 200, 'msg': 'ok'})
@@ -60,10 +61,40 @@ def subscribe():
             return jsonify({'code': 400, 'msg': 'ok'})
 
 
-@flask_app.route('/api/v1/threatip/')
-def threatIP():
-    if request.method == 'GET':
-        return jsonify({'hello': 'world'})
+@flask_app.route('/api/v1/phishing/', methods=['POST'])
+def phishing():
+    if request.method == 'POST':
+        t = int(time.mktime((2022, 9, 8, 0, 0, 0, 0, 0, 0)))
+        phishing = PhishingInfo.query.filter(
+            PhishingInfo.create_time > t).all()
+        return jsonify({
+            'result': [{
+                'ip': item.ip,
+                'domain': item.domain,
+                'create_time': item.create_time
+            } for item in phishing]
+        })
+
+
+@flask_app.route('/api/v1/botnet/', methods=['POST'])
+def botnet():
+    if request.method == 'POST':
+        t = int(time.mktime((2022, 9, 8, 0, 0, 0, 0, 0, 0)))
+        botnet = BotnetInfo.query.filter(BotnetInfo.last_online > t).all()
+        return jsonify({
+            'result': [{
+                'ip': item.ip,
+                'hostname': item.hostname,
+                'port': item.port,
+                'country': item.country,
+                'as_name': item.as_name,
+                'as_number': item.as_number,
+                'status': item.status,
+                'first_seen': item.first_seen,
+                'last_online': item.last_online,
+                'malware': item.malware
+            } for item in botnet]
+        })
 
 
 if __name__ == '__main__':
