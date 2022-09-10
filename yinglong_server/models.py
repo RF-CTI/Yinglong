@@ -1,9 +1,6 @@
 import uuid
 from hashlib import md5
-from flask_sqlalchemy import SQLAlchemy
-from flask_app import flask_app
-
-db = SQLAlchemy(flask_app)
+from .extensions import db
 
 
 class User(db.Model):

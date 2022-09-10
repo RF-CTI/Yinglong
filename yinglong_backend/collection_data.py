@@ -1,6 +1,6 @@
 import time
 import requests
-from model import db, PhishingInfo, BotnetInfo
+from yinglong_server.models import db, PhishingInfo, BotnetInfo
 from utils import strdate2time, strtime2time
 
 
@@ -46,7 +46,10 @@ def collectionBotnetData():
     url = 'http://feodotracker.abuse.ch/downloads/ipblocklist_recommended.json'
     for _ in range(20):
         try:
-            response = requests.request('get', url, headers=headers, verify=False)
+            response = requests.request('get',
+                                        url,
+                                        headers=headers,
+                                        verify=False)
             break
         except Exception:
             time.sleep(10)

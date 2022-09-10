@@ -1,0 +1,21 @@
+.header {
+    width: 100%;
+    border-bottom: 1px solid #303030;
+    background-color: black;
+}
+
+body {
+    width: 100%;
+    background-color: black;
+    background-position: top;
+    background-repeat: no-repeat;
+    background-size: 100%;
+}
+.login_cart {
+    border-radius: 7px;
+    background-color: #111;
+    color:#fff;
+    margin:50px;
+    padding: 40px;
+    margin-top: 80px;
+}
