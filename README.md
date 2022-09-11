@@ -1,6 +1,10 @@
 # Yinglong 
 
-![](https://img.shields.io/badge/python-3.6-blue)![](https://img.shields.io/badge/Flask-0.12.2-green)![](https://img.shields.io/badge/celery-5.1.2-green)![](https://img.shields.io/badge/redis-4.3.4-green)![](https://img.shields.io/badge/License-y-yellow)
+![](https://img.shields.io/badge/python-3.6+-orange)
+![](https://img.shields.io/badge/Flask-0.12.2-blue)
+![](https://img.shields.io/badge/documentation-yes-green)
+![](https://img.shields.io/badge/maintained-yes-yellowgreen)
+![](https://img.shields.io/badge/License-yes-yellow)
 
 This is a project created and maintained by the Redflag organization. This project is an open source threat intelligence collection and publishing system that provides API usage. Please use this project reasonably and legally.
 
