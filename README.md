@@ -40,3 +40,9 @@ python manage.py runserver
 
 - [Quanfita](https://github.com/Quanfita)
 - [RF&CTI](https://github.com/RFCTI)
+
+## License
+
+MIT License
+
+Copyright (c) 2022 Redflag Organization.
