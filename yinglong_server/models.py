@@ -1,3 +1,4 @@
+from ipaddress import ip_address
 import uuid
 from hashlib import md5
 from .extensions import db
@@ -27,24 +28,30 @@ class User(db.Model):
 
 
 class PhishingInfo(db.Model):
-    id = db.Column('user_id', db.Integer, primary_key=True, autoincrement=True)
+    id = db.Column('phishing_id',
+                   db.Integer,
+                   primary_key=True,
+                   autoincrement=True)
     ip = db.Column(db.String(64))
     domain = db.Column(db.String(128))
-    create_time = db.Column(db.Integer)
+    timestamp = db.Column(db.Integer)
 
-    def __init__(self, ip, domain, create_time) -> None:
+    def __init__(self, ip, domain, timestamp) -> None:
         super().__init__()
         self.ip = ip
         self.domain = domain
-        self.create_time = create_time
+        self.timestamp = timestamp
 
     def __repr__(self) -> str:
         return "<PhishingInfo: ip-%r, domain-%r>" % (self.ip, self.domain)
 
 
 class BotnetInfo(db.Model):
-    id = db.Column('user_id', db.Integer, primary_key=True, autoincrement=True)
-    ip = db.Column(db.String(64))
+    id = db.Column('botnet_id',
+                   db.Integer,
+                   primary_key=True,
+                   autoincrement=True)
+    ip_address = db.Column(db.String(64))
     port = db.Column(db.Integer)
     hostname = db.Column(db.String(128))
     country = db.Column(db.String(8))
@@ -58,7 +65,7 @@ class BotnetInfo(db.Model):
     def __init__(self, ip, port, hostname, status, country, as_number, as_name,
                  first_seen, last_online, malware) -> None:
         super().__init__()
-        self.ip = ip
+        self.ip_address = ip_address
         self.port = port
         self.country = country
         self.as_name = as_name
