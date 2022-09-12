@@ -7,6 +7,8 @@ from hashlib import md5
 from ..models import PhishingInfo, BotnetInfo
 from flask_restful import Resource
 from flask import jsonify, request
+from sqlalchemy import and_
+from utils import commonQueryOrder, commonQueryCompare
 
 redis_pool = redis.ConnectionPool(host='127.0.0.1',
                                   port=6379,
@@ -44,8 +46,8 @@ class PhishingAPI(Resource):
         print(request.data)
         data = json.loads(request.data)
         token = data.get('token')
-        # date = data.get('date')
-        # quantity = data.get('quantity')
+        date = data.get('date')
+        quantity = data.get('quantity')
         timestamp = data.get('timestamp')
         signature = data.get('signature')
         secret = r.hget('yinglong_authentication', token)
@@ -53,11 +55,51 @@ class PhishingAPI(Resource):
                              secert=secret,
                              timestamp=timestamp,
                              signature=signature):
-            return jsonify({'code': 200})
-            if r.hget('yinglong_phishing', str(today)) is None:
+            if date is not None:
+                if date == str(today):
+                    t = int(time.mktime(time.strptime(str(today), '%Y-%m-%d')))
+                    phishing = commonQueryCompare(PhishingInfo,
+                                                  PhishingInfo.timestamp, t,
+                                                  '>')
+                    # phishing = PhishingInfo.query.filter(
+                    #     PhishingInfo.timestamp > t).all()
+                    result = [{
+                        'ip': item.ip,
+                        'domain': item.domain,
+                        'timestamp': item.timestamp
+                    } for item in phishing]
+                else:
+                    bt = int(time.mktime(time.strptime(str(date), '%Y-%m-%d')))
+                    et = bt + 24 * 3600
+                    phishing = PhishingInfo.query.filter(
+                        and_(PhishingInfo.timestamp >= bt,
+                             PhishingInfo.timestamp <
+                             et)).limit(quantity).all()
+                    result = [{
+                        'ip': item.ip,
+                        'domain': item.domain,
+                        'timestamp': item.timestamp
+                    } for item in phishing]
+            elif quantity is not None:
+                if quantity > 10000:
+                    quantity = 10000
+                if quantity < 0:
+                    quantity = 0
+                phishing = commonQueryOrder(PhishingInfo,
+                                            PhishingInfo.timestamp, quantity)
+                # phishing = PhishingInfo.query.order_by(
+                #     PhishingInfo.timestamp.desc()).limit(quantity).all()
+                result = [{
+                    'ip': item.ip,
+                    'domain': item.domain,
+                    'timestamp': item.timestamp
+                } for item in phishing]
+            elif r.hget('yinglong_phishing', str(today)) is None:
                 t = time.mktime(time.strptime(str(today), '%Y-%m-%d'))
-                phishing = PhishingInfo.query.filter(
-                    PhishingInfo.timestamp > t).all()
+                phishing = commonQueryCompare(PhishingInfo,
+                                              PhishingInfo.timestamp, t, '>')
+                # phishing = PhishingInfo.query.filter(
+                #     PhishingInfo.timestamp > t).all()
                 result = [{
                     'ip': item.ip,
                     'domain': item.domain,

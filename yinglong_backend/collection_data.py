@@ -15,12 +15,15 @@ def collectionPhishData():
             continue
     with open('phish_score.csv', 'w', encoding='utf-8') as f:
         f.write(response.text)
-    conn = create_engine('sqlite:///yinglong.sqlite3', encoding='utf8')
+    conn = create_engine('sqlite:///yinglong_server/tmp/yinglong.sqlite3',
+                         encoding='utf8')
     df = pd.read_csv('phish_score.csv',
                      names=['timestamp', 'score', 'domain', 'ip'],
                      error_bad_lines=False)
     df = df.drop(range(9), axis=0, inplace=False)
-    df['score'] = df['score'].astype(float, errors='raise')
+    # df['score'] = df['score'].astype(float, errors='raise')
+    df['score'] = pd.to_numeric(df['score'], errors='coerce')
+    df = df[df['score'].notna()]
     df['timestamp'] = pd.to_datetime(df['timestamp'])
     df['timestamp'] = df['timestamp'].astype('int64') // 1e9
     df['domain'] = df['domain'].str.split('/', expand=True)[2]
@@ -69,7 +72,7 @@ def collectionBotnetData():
     data = response.json()
     df = pd.DataFrame(data)
     sql_cmd = "SELECT * FROM {}".format('botnet_info')
-    conn = create_engine('sqlite:///yinglong.sqlite3', encoding='utf8')
+    conn = create_engine('sqlite:///yinglong_server/tmp/yinglong.sqlite3', encoding='utf8')
     tdf = pd.read_sql(sql=sql_cmd, con=conn)
     df['first_seen'] = pd.to_datetime(df['first_seen'])
     df['first_seen'] = df['first_seen'].astype('int64') // 1e9
