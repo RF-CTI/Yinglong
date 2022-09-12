@@ -11,10 +11,10 @@ class Subscribe(Resource):
         username = data.get('username')
         dtype = data.get('type')
         content = data.get('content')
-        uid = data.get('uid')
-        if username and dtype and content and uid:
+        token = data.get('token')
+        if username and dtype and content and token:
             user = db.session.query(User).filter(User.username == username,
-                                                 User.uid == uid).first()
+                                                 User.token == token).first()
             user.subscribe_type = dtype
             user.subscribe_content = str(content)
             return jsonify({'code': 200, 'msg': 'ok'})

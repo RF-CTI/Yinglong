@@ -1,4 +1,3 @@
-from ipaddress import ip_address
 import uuid
 from hashlib import md5
 from .extensions import db
@@ -9,7 +8,7 @@ class User(db.Model):
     username = db.Column(db.String(100), unique=True)
     email = db.Column(db.String(50), unique=True)
     password = db.Column(db.String(64))
-    uid = db.Column(db.String(64))
+    token = db.Column(db.String(64))
     is_login = db.Column(db.Boolean, default=False)
     subscribe_type = db.Column(db.Integer, default=0)
     subscribe_content = db.Column(db.String(256), default='')
@@ -18,7 +17,7 @@ class User(db.Model):
         self.username = username
         self.email = email
         self.password = password
-        self.uid = md5(str(uuid.uuid1()).encode('utf-8')).hexdigest()
+        self.token = md5(str(uuid.uuid1()).encode('utf-8')).hexdigest()
         self.is_login = False
         self.subscribe_type = None
         self.subscribe_content = None
@@ -62,8 +61,8 @@ class BotnetInfo(db.Model):
     last_online = db.Column(db.Integer)
     malware = db.Column(db.String(64))
 
-    def __init__(self, ip, port, hostname, status, country, as_number, as_name,
-                 first_seen, last_online, malware) -> None:
+    def __init__(self, ip_address, port, hostname, status, country, as_number,
+                 as_name, first_seen, last_online, malware) -> None:
         super().__init__()
         self.ip_address = ip_address
         self.port = port

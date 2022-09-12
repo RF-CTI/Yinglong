@@ -131,5 +131,6 @@ dmypy.json
 # my secret file
 config.py
 doc/
-.sqlite3
+yinglong.sqlite3
+phish_score.csv
 tmp/

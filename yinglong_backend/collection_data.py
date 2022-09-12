@@ -15,7 +15,7 @@ def collectionPhishData():
             continue
     with open('phish_score.csv', 'w', encoding='utf-8') as f:
         f.write(response.text)
-    conn = create_engine('sqlite:///data.sqlite3', encoding='utf8')
+    conn = create_engine('sqlite:///yinglong.sqlite3', encoding='utf8')
     df = pd.read_csv('phish_score.csv',
                      names=['timestamp', 'score', 'domain', 'ip'],
                      error_bad_lines=False)
@@ -36,6 +36,7 @@ def collectionPhishData():
                          df_filter2,
                          on=['ip', 'domain', 'timestamp'],
                          how='outer')
+    df_filter = df_filter.sort_values(by='timestamp')
     df_filter.insert(loc=0,
                      column='phishing_id',
                      value=range(len(tdf) + 1,
