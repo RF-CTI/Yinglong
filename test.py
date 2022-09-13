@@ -3,7 +3,7 @@ import json
 from hashlib import md5
 import requests
 import time
-from yinglong_backend.collection_data import collectionPhishData
+# from yinglong_backend.collection_data import collectionPhishData
 
 if __name__ == '__main__':
     # collectionPhishData()
