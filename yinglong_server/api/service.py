@@ -108,6 +108,13 @@ class PhishingAPI(Resource):
                 r.hset('yinglong_phishing', str(today), str(result))
             else:
                 result = eval(r.hget('yinglong_phishing', str(today)))
+            old = json.loads(r.hget('yinglong_user_validity',
+                                    token)).get('times')
+            r.hset('yinglong_user_validity', token,
+                   json.dumps({
+                       'timestamp': time.time(),
+                       'times': old + 1
+                   }))
             return jsonify({
                 'result': result,
                 'timestamp': int(time.time()),
@@ -121,6 +128,23 @@ class PhishingAPI(Resource):
             return False
         elif md5('-'.join([token, secert, str(timestamp)
                            ]).encode('utf-8')).hexdigest() == signature:
+            return self.detectionValidity(token=token)
+        else:
+            return False
+
+    def detectionValidity(self, token):
+        r = redis.Redis(connection_pool=redis_pool)
+        validty = r.hget('yinglong_user_validity', token)
+        if validty is None:
+            r.hset('yinglong_user_validity', token,
+                   json.dumps({
+                       'timestamp': time.time(),
+                       'times': 0
+                   }))
+            return True
+        elif time.time() - json.loads(validty).get(
+                'timestamp') >= 20 * 60 and json.loads(validty).get(
+                    'times') <= 50:
             return True
         else:
             return False
