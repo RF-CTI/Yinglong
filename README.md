@@ -8,6 +8,19 @@
 
 This is a project created and maintained by the Redflag organization. This project is an open source threat intelligence collection and publishing system that provides API usage. Please use this project reasonably and legally.
 
+## APIs
+
+| API | means |
+| --- | --- |
+| /api/phishing/ | Get the phishing website information of the day |
+| /api/botnet/ | Get the botnet information of the day |
+
+## Wiki
+
+If you have any problem, you can look at [wiki](https://github.com/RF-CTI/Yinglong/wiki) that include all APIs usage.
+
+Attention: If you have problems with authentication in API usage, please see [How to use authentication](https://github.com/RF-CTI/Yinglong/wiki/Must-see-before-use---instructions-on-authentication).
+
 ## Enviroment
 
 - Python 3.6+
@@ -16,13 +29,6 @@ This is a project created and maintained by the Redflag organization. This proje
 - celery 5.1.2
 - redis 4.3.4
 - APScheduler 3.9.1
-
-## APIs
-
-| API | means |
-| --- | --- |
-| /api/phishing/ | Get the phishing website information of the day |
-| /api/botnet/ | Get the botnet information of the day |
 
 ## Usage
 
