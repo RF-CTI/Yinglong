@@ -134,3 +134,4 @@ doc/
 yinglong.sqlite3
 phish_score.csv
 tmp/
+logs/

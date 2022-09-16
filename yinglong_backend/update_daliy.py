@@ -1,8 +1,10 @@
 import redis
+import time
+import json
+import datetime
 import pandas as pd
 from config import DB_URL
 from sqlalchemy import create_engine
-from utils import getTodayTimestamp
 
 
 def updateRedisToken():
@@ -26,7 +28,8 @@ def updateRedisSecretCache():
 
 
 def updateRedisDaliyData():
-    ts = getTodayTimestamp()
+    today = datetime.date.today()
+    ts = int(time.mktime(time.strptime(str(today), '%Y-%m-%d')))
     r = redis.Redis(host='127.0.0.1', port=6379, decode_responses=True)
     conn = create_engine(DB_URL, encoding='utf8')
     sql = '''select * from phishing_info where timestamp >= {};'''.format(ts)
@@ -34,7 +37,7 @@ def updateRedisDaliyData():
     v_json = df.to_json(orient='records',
                         date_format='epoch',
                         force_ascii=False)
-    print(v_json)
+    r.hset('yinglong_phishing', str(today), json.dumps(v_json))
 
 
 if __name__ == '__main__':

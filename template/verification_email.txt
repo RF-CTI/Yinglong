@@ -1,0 +1,9 @@
+Dear {},
+
+Welcome to Yinglong. To secure your Yinglong account, we just need to verify your email address: {}.
+
+Please click this url to verify: http://{}/verification/?code={}
+
+Yinglong Team
+
+{}
