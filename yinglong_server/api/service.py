@@ -8,7 +8,9 @@ from ..models import PhishingInfo, BotnetInfo
 from flask_restful import Resource
 from flask import jsonify, request
 from sqlalchemy import and_
-from utils import commonQueryOrder, commonQueryCompare, getNoNoneItem
+from sqlalchemy.sql import func
+from utils import (commonQueryOrder, commonQueryCompare, getNoNoneItem,
+                   getTodayTimestamp)
 
 redis_pool = redis.ConnectionPool(host='127.0.0.1',
                                   port=6379,
@@ -52,7 +54,7 @@ class BasicAPI(Resource):
             return False
         elif md5('-'.join([token, secert, str(timestamp)
                            ]).encode('utf-8')).hexdigest() == signature:
-            return self.detectionValidity(token=token)
+            return True  # self.detectionValidity(token=token)
         else:
             self.setCodeAndMessage(301, 'Verification failed!')
             return False
@@ -85,6 +87,38 @@ class BasicAPI(Resource):
     def setCodeAndMessage(self, code, msg):
         self.CODE = code
         self.MESSAGE = msg
+
+
+class DaliyReportAPI(BasicAPI):
+
+    def post(self):
+        today = getTodayTimestamp()
+        t_phishing = PhishingInfo.query.filter(
+            PhishingInfo.timestamp > today).count()
+        t_botnet = BotnetInfo.query.filter(
+            BotnetInfo.last_online > today).count()
+        phishing = PhishingInfo.query.count()
+        botnet = BotnetInfo.query.count()
+        last_item = PhishingInfo.query.order_by(
+            PhishingInfo.timestamp.desc()).limit(1).all()
+        last_update = last_item[0].timestamp
+        return jsonify({
+            "phishing_total":
+            phishing,
+            "botnet_total":
+            botnet,
+            "today_phishing":
+            t_phishing,
+            "today_botnet":
+            t_botnet,
+            "last_update":
+            time.strftime("%Y-%m-%d %H:%M:%S",
+                          time.localtime(float(last_update))),
+            "collected_source":
+            "phishstats",
+            "updated_source":
+            "feodotracker"
+        })
 
 
 class PhishingAPI(BasicAPI):
@@ -137,7 +171,7 @@ class PhishingAPI(BasicAPI):
     def getTodayData(self) -> dict:
         today = datetime.date.today()
         t = int(time.mktime(time.strptime(str(today),
-                                          '%Y-%m-%d'))) - 8 * 60 * 60
+                                          '%Y-%m-%d'))) - 12 * 60 * 60
         r = redis.Redis(connection_pool=redis_pool)
         if r.hget('yinglong_phishing', str(today)) is not None:
             result = json.loads(r.hget('yinglong_phishing', str(today)))
@@ -153,7 +187,7 @@ class PhishingAPI(BasicAPI):
 
     def getDateData(self, date) -> dict:
         bt = int(time.mktime(time.strptime(str(date),
-                                           '%Y-%m-%d'))) - 8 * 60 * 60
+                                           '%Y-%m-%d'))) - 12 * 60 * 60
         et = bt + 24 * 3600
         phishing = PhishingInfo.query.filter(
             and_(PhishingInfo.timestamp >= bt,
