@@ -11,7 +11,7 @@ def create_app(config_name):
     config[config_name].init_app(app)
 
     db.init_app(app)
-    CORS(app, supports_credentials=True, resources=r'/*')
+    CORS(app)
 
     # register blueprint
     from .api import api_bp as api_blueprint

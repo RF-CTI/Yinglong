@@ -71,25 +71,26 @@ def collectionBotnetData():
             continue
     data = response.json()
     df = pd.DataFrame(data)
+    df.rename(columns={'last_online':'timestamp'},inplace=True) 
     sql_cmd = "SELECT * FROM {}".format('botnet_info')
     conn = create_engine('sqlite:///yinglong_server/tmp/yinglong.sqlite3',
                          encoding='utf8')
     tdf = pd.read_sql(sql=sql_cmd, con=conn)
     df['first_seen'] = pd.to_datetime(df['first_seen'])
     df['first_seen'] = df['first_seen'].astype('int64') // 1e9
-    df['last_online'] = pd.to_datetime(df['last_online'])
-    df['last_online'] = df['last_online'].astype('int64') // 1e9
+    df['timestamp'] = pd.to_datetime(df['timestamp'])
+    df['timestamp'] = df['timestamp'].astype('int64') // 1e9
     df_filter1 = df[~df['as_name'].isin(tdf['as_name'])]
     df_filter2 = df[~df['ip_address'].isin(tdf['ip_address'])]
     df_filter = pd.merge(df_filter1,
                          df_filter2,
                          on=[
                              'as_name', 'as_number', 'country', 'first_seen',
-                             'hostname', 'ip_address', 'last_online',
+                             'hostname', 'ip_address', 'timestamp',
                              'malware', 'port', 'status'
                          ],
                          how='outer')
-    df_filter = df_filter.sort_values(by='last_online')
+    df_filter = df_filter.sort_values(by='timestamp')
     df_filter.insert(loc=0,
                      column='botnet_id',
                      value=range(len(tdf) + 1,

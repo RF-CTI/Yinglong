@@ -1,7 +1,7 @@
 import datetime
 import json
 from flask import jsonify, request, g
-from ..models import db, User
+from ..models import db, User, IntelligenceTypeInfo, DataSourceInfo
 from yinglong_backend.celery_task import sendEmail
 from flask_restful import Resource
 from config import SITE_DOMAIN
@@ -21,7 +21,7 @@ class BasicAPI(Resource):
 
 class RegisterVerificationAPI(BasicAPI):
 
-    def get(self):
+    def post(self):
         data = json.loads(request.data)
         username = data.get('username')
         token = data.get('token')
@@ -37,7 +37,7 @@ class RegisterVerificationAPI(BasicAPI):
                 else:
                     user.status = 1
                     db.session.commit()
-        return jsonify({'code': self.CODE, 'msg': self.MESSAGE})
+        return jsonify({'code': self.CODE, 'msg': self.MESSAGE, 'username': username})
 
 
 class RegisterAPI(BasicAPI):
@@ -67,7 +67,7 @@ class RegisterAPI(BasicAPI):
                                      user.verification_code,
                                      str(datetime.date.today())), [user.email],
                     '')
-        return jsonify({'code': self.CODE, 'msg': self.MESSAGE})
+        return jsonify({'code': self.CODE, 'msg': self.MESSAGE,'username':username})
 
 
 class LoginAPI(BasicAPI):
@@ -79,27 +79,26 @@ class LoginAPI(BasicAPI):
         password = data.get('password')
         if email is None or password is None:
             self.setCodeAndMessage(300, "Missing required parameter!")
-        elif not self.verify_password(email=email, password=password):
-            self.setCodeAndMessage(301, "Username or password is wrong!")
         else:
             user = User.query.filter_by(email=email).first()
             if user is None:
                 self.setCodeAndMessage(301, "Email does not exist!")
+            elif not self.verify_password(email=email, password=password):
+                self.setCodeAndMessage(301, "E-mail or password is wrong!")
             else:
                 user.is_login = True
                 db.session.commit()
         return jsonify({
             "code": self.CODE,
             "msg": self.MESSAGE,
-            "id": g.user.id,
-            'username': g.user.username
-        })
+            "id": user.id,
+            'username': user.username
+        } if self.CODE == 200 else {'code':self.CODE,'msg':self.MESSAGE})
 
     def verify_password(self, email, password):
         user = User.query.filter_by(email=email).first()
         if not user or not user.verify_password(password):
             return False
-        g.user = user
         return True
 
 
@@ -117,3 +116,68 @@ class LogoutAPI(BasicAPI):
             else:
                 user.is_login = False
         return jsonify({'code': self.CODE, 'msg': self.MESSAGE})
+
+
+class UserInfoAPI(BasicAPI):
+
+    def post(self):
+        data = json.loads(request.data)
+        username = data.get('username')
+        if username is None:
+            self.setCodeAndMessage(300, "Missing required parameter!")
+        else:
+            user = User.query.filter_by(username=username).first()
+            if user is None:
+                self.setCodeAndMessage(301, "Username does not exist!")
+            else:
+                return jsonify(user.to_json())
+        return jsonify({'code': self.CODE, 'msg': self.MESSAGE})
+
+
+class GetUserSubscribeAPI(BasicAPI):
+
+    def post(self):
+        data = json.loads(request.data)
+        username = data.get('username')
+        if username is None:
+            self.setCodeAndMessage(300, "Missing required parameter!")
+        else:
+            user = User.query.filter_by(username=username).first()
+            if user is None:
+                self.setCodeAndMessage(301, "Username does not exist!")
+            else:
+                itypes = IntelligenceTypeInfo.query.all()
+                res = {}
+                sub_content = json.loads(user.subscribe_content)['content']
+                for itype in itypes:
+                    sources = DataSourceInfo.query.filter_by(intelligence_type=itype.id).all()
+                    l = []
+                    for source in sources:
+                        data = source.to_json()
+                        data['subscribe'] = True if str(data['id']) in sub_content else False
+                        l.append(data)
+                    res[itype.name] = l
+                return jsonify({
+                    'code': self.CODE,
+                    'msg': self.MESSAGE,
+                    'result': res
+                })
+        return jsonify({'code': self.CODE, 'msg': self.MESSAGE})
+
+class GetUserToken(BasicAPI):
+
+    def get(self):
+        username = request.args.get('username')
+        if username is None:
+            self.setCodeAndMessage(300, "Missing required parameter!")
+        else:
+            user = User.query.filter_by(username=username).first()
+            if user is None:
+                self.setCodeAndMessage(301, "Username does not exist!")
+            else:
+                return jsonify({
+                    'code': self.CODE,
+                    'msg': self.MESSAGE,
+                    'token': user.token
+                })
+        return jsonify({'code':self.CODE,'msg':self.MESSAGE})

@@ -1,10 +1,51 @@
+import os
 import redis
 import time
 import json
 import datetime
 import pandas as pd
-from config import DB_URL
+from config import DB_URL, TMP_FILE_DIR
 from sqlalchemy import create_engine
+from utils import uploadFile, encodeBase64, getTodayTimestamp
+
+
+def saveWeekDataRecord():
+    INTELLIGENCE_TYPES = {
+        "phishing": ('phishing_info',1),
+        "botnet": ('botnet_info',2)
+    }
+    et = getTodayTimestamp()
+    bt = et - 24 * 3600 * 7
+    conn = create_engine(DB_URL, encoding='utf8')
+    for key in INTELLIGENCE_TYPES.keys():
+        sql = '''select * from {} where timestamp >= {} and timestamp < {};'''.format(INTELLIGENCE_TYPES[key][0], bt, et)
+        df = pd.read_sql_query(sql=sql, con=conn)
+        sql = '''select * from {};'''.format('data_source')
+        tdf = pd.read_sql_query(sql=sql, con=conn)
+        for _, row in tdf.iterrows():
+            df.loc[df['source']==row['source_id'],['source']] = row['name']
+        bt_str = time.strftime("%Y-%m-%d", time.localtime(bt))
+        et_str = time.strftime("%Y-%m-%d", time.localtime(bt))
+        df = df.drop(df.columns[[0]], axis = 1)
+        csv_name = '{}_{}_{}_record.csv'.format(key, bt_str, et_str)
+        csv_path = os.path.join(TMP_FILE_DIR,csv_name)
+        df.to_csv(csv_path ,index=False)
+        with open(csv_path, 'r', encoding='utf-8') as f:
+            sha, size, url = uploadFile(key, tuple(et_str.split('-')[:2]), csv_name, encodeBase64(f.read()))
+            sql = '''select * from {};'''.format('data_record')
+            tdf = pd.read_sql_query(sql=sql, con=conn)
+            dic = [{
+                'record_id': len(tdf) + 1,
+                "begin_time": bt,
+                "end_time": et,
+                "intelligence_type": INTELLIGENCE_TYPES[key][1],
+                'size': size,
+                'sha_code': sha,
+                'url': url
+            }]
+            ndf = pd.DataFrame(dic,columns=['record_id','begin_time','end_time','size','sha_code','url'])
+            pd.io.sql.to_sql(ndf,"data_record",conn,if_exists='append',index=None)
+            print('update week data {} has {} items in file {}.'.format(key, len(df), csv_name))
 
 
 def updateRedisToken():
@@ -14,6 +55,7 @@ def updateRedisToken():
     df = pd.read_sql_query(sql=sql, con=conn)
     for item in df['token']:
         r.sadd('yonglong_tokens', item)
+    print("update users token: {}.".format(len(df['token'])))
 
 
 def updateRedisSecretCache():
@@ -25,6 +67,7 @@ def updateRedisSecretCache():
         else:
             r.hset('yinglong_secret_cache', item,
                    r.hget('yinglong_authentication', item))
+    print('Clear outtime secret.')
 
 
 def updateRedisDaliyData():
@@ -38,6 +81,7 @@ def updateRedisDaliyData():
                         date_format='epoch',
                         force_ascii=False)
     r.hset('yinglong_phishing', str(today), json.dumps(v_json))
+    print('update daliy data.')
 
 
 if __name__ == '__main__':

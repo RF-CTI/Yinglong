@@ -9,8 +9,7 @@ from flask_restful import Resource
 from flask import jsonify, request
 from sqlalchemy import and_
 from sqlalchemy.sql import func
-from utils import (commonQueryOrder, commonQueryCompare, getNoNoneItem,
-                   getTodayTimestamp)
+from utils import (commonQueryOrder, commonQueryCompare, getNoNoneItem)
 
 redis_pool = redis.ConnectionPool(host='127.0.0.1',
                                   port=6379,
@@ -89,38 +88,6 @@ class BasicAPI(Resource):
         self.MESSAGE = msg
 
 
-class DaliyReportAPI(BasicAPI):
-
-    def post(self):
-        today = getTodayTimestamp()
-        t_phishing = PhishingInfo.query.filter(
-            PhishingInfo.timestamp > today).count()
-        t_botnet = BotnetInfo.query.filter(
-            BotnetInfo.last_online > today).count()
-        phishing = PhishingInfo.query.count()
-        botnet = BotnetInfo.query.count()
-        last_item = PhishingInfo.query.order_by(
-            PhishingInfo.timestamp.desc()).limit(1).all()
-        last_update = last_item[0].timestamp
-        return jsonify({
-            "phishing_total":
-            phishing,
-            "botnet_total":
-            botnet,
-            "today_phishing":
-            t_phishing,
-            "today_botnet":
-            t_botnet,
-            "last_update":
-            time.strftime("%Y-%m-%d %H:%M:%S",
-                          time.localtime(float(last_update))),
-            "collected_source":
-            "phishstats",
-            "updated_source":
-            "feodotracker"
-        })
-
-
 class PhishingAPI(BasicAPI):
     VALIDITY = 'yinglong_user_validity_phishing'
 
@@ -178,11 +145,7 @@ class PhishingAPI(BasicAPI):
         else:
             phishing = commonQueryCompare(PhishingInfo, PhishingInfo.timestamp,
                                           t, '>')
-            result = [{
-                'ip': item.ip,
-                'domain': item.domain,
-                'timestamp': item.timestamp
-            } for item in phishing]
+            result = [item.to_json() for item in phishing]
         return result
 
     def getDateData(self, date) -> dict:
@@ -192,11 +155,7 @@ class PhishingAPI(BasicAPI):
         phishing = PhishingInfo.query.filter(
             and_(PhishingInfo.timestamp >= bt,
                  PhishingInfo.timestamp < et)).all()
-        result = [{
-            'ip': item.ip,
-            'domain': item.domain,
-            'timestamp': item.timestamp
-        } for item in phishing]
+        result = [item.to_json() for item in phishing]
         return result
 
     def getQuantityData(self, quantity):
@@ -206,11 +165,7 @@ class PhishingAPI(BasicAPI):
             quantity = 0
         phishing = commonQueryOrder(PhishingInfo, PhishingInfo.timestamp,
                                     quantity)
-        result = [{
-            'ip': item.ip,
-            'domain': item.domain,
-            'timestamp': item.timestamp
-        } for item in phishing]
+        result = [item.to_json() for item in phishing]
         return result
 
 
@@ -269,18 +224,7 @@ class BotnetAPI(BasicAPI):
         else:
             botnet = commonQueryCompare(BotnetInfo, BotnetInfo.last_online, t,
                                         '>')
-            result = [{
-                'ip': item.ip,
-                'hostname': item.hostname,
-                'port': item.port,
-                'country': item.country,
-                'as_name': item.as_name,
-                'as_number': item.as_number,
-                'status': item.status,
-                'first_seen': item.first_seen,
-                'last_online': item.last_online,
-                'malware': item.malware
-            } for item in botnet]
+            result = [item.to_json() for item in botnet]
         return result
 
     def getDateData(self, date) -> dict:
@@ -289,18 +233,7 @@ class BotnetAPI(BasicAPI):
         botnet = BotnetInfo.query.filter(
             and_(BotnetInfo.last_online >= bt,
                  BotnetInfo.last_online < et)).all()
-        result = [{
-            'ip': item.ip,
-            'hostname': item.hostname,
-            'port': item.port,
-            'country': item.country,
-            'as_name': item.as_name,
-            'as_number': item.as_number,
-            'status': item.status,
-            'first_seen': item.first_seen,
-            'last_online': item.last_online,
-            'malware': item.malware
-        } for item in botnet]
+        result = [item.to_json() for item in botnet]
         return result
 
     def getQuantityData(self, quantity) -> dict:
@@ -309,16 +242,5 @@ class BotnetAPI(BasicAPI):
         if quantity < 0:
             quantity = 0
         botnet = commonQueryOrder(BotnetInfo, BotnetInfo.last_online, quantity)
-        result = [{
-            'ip': item.ip,
-            'hostname': item.hostname,
-            'port': item.port,
-            'country': item.country,
-            'as_name': item.as_name,
-            'as_number': item.as_number,
-            'status': item.status,
-            'first_seen': item.first_seen,
-            'last_online': item.last_online,
-            'malware': item.malware
-        } for item in botnet]
+        result = [item.to_json() for item in botnet]
         return result
