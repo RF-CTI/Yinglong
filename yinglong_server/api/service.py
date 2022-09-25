@@ -8,7 +8,6 @@ from ..models import PhishingInfo, BotnetInfo
 from flask_restful import Resource
 from flask import jsonify, request
 from sqlalchemy import and_
-from sqlalchemy.sql import func
 from utils import (commonQueryOrder, commonQueryCompare, getNoNoneItem)
 
 redis_pool = redis.ConnectionPool(host='127.0.0.1',

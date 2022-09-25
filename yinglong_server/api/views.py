@@ -1,7 +1,8 @@
 import json
 import time
-from flask import jsonify, request, g
-from ..models import db, User, PhishingInfo, BotnetInfo, DataRecordInfo, IntelligenceTypeInfo, DataSourceInfo
+from flask import jsonify, request
+from ..models import (db, User, PhishingInfo, BotnetInfo, DataRecordInfo,
+                      IntelligenceTypeInfo, DataSourceInfo)
 from .service import BasicAPI
 from utils import getTodayTimestamp
 from ..common import INTELLIGENCE_SERVER_MAP
@@ -47,13 +48,21 @@ class GetDataAPI(BasicAPI):
             self.setCodeAndMessage(300, 'Missing required parameter!')
         else:
             today = getTodayTimestamp() - 12 * 3600
-            datasource = DataSourceInfo.query.filter_by(name=sourceType).first()
-            intel_type = IntelligenceTypeInfo.query.filter_by(id=datasource.intelligence_type).first()
+            datasource = DataSourceInfo.query.filter_by(
+                name=sourceType).first()
+            intel_type = IntelligenceTypeInfo.query.filter_by(
+                id=datasource.intelligence_type).first()
             st = INTELLIGENCE_SERVER_MAP.get(intel_type.name)
-            new_query_res = st.query.filter(st.source==datasource.id).order_by(st.id.desc()).limit(100).all()
+            new_query_res = st.query.filter(
+                st.source == datasource.id).order_by(
+                    st.id.desc()).limit(100).all()
             new_result = [res.to_json_simple() for res in new_query_res]
-            history_query_res = st.query.filter(st.source==datasource.id,st.timestamp < today).order_by(st.id.desc()).limit(100).all()
-            history_result = [res.to_json_simple() for res in history_query_res]
+            history_query_res = st.query.filter(
+                st.source == datasource.id,
+                st.timestamp < today).order_by(st.id.desc()).limit(100).all()
+            history_result = [
+                res.to_json_simple() for res in history_query_res
+            ]
             return jsonify({
                 "new": new_result,
                 "history": history_result,
@@ -68,9 +77,10 @@ class DataRecordAPI(BasicAPI):
     def get(self):
         result = {}
         for item in IntelligenceTypeInfo.query.all():
-            datas = DataRecordInfo.query.filter(DataRecordInfo.intelligence_type==item.id).all()
+            datas = DataRecordInfo.query.filter(
+                DataRecordInfo.intelligence_type == item.id).all()
             result[item.name] = [data.to_json() for data in datas]
-        return jsonify({'result':result})
+        return jsonify({'result': result})
 
 
 class SubscribeAPI(BasicAPI):
@@ -80,7 +90,8 @@ class SubscribeAPI(BasicAPI):
         username = data.get('username')
         sc_id = data.get('id')
         if username and sc_id:
-            user = db.session.query(User).filter(User.username == username).first()
+            user = db.session.query(User).filter(
+                User.username == username).first()
             if user.subscribe_content is None or user.subscribe_content == '':
                 ct = []
             else:
@@ -89,7 +100,7 @@ class SubscribeAPI(BasicAPI):
                 ct.remove(sc_id)
             else:
                 ct.append(sc_id)
-            user.subscribe_content = json.dumps({"content":ct})
+            user.subscribe_content = json.dumps({"content": ct})
             db.session.commit()
             return jsonify({'code': 200, 'msg': 'ok'})
         else:
