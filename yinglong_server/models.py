@@ -6,6 +6,7 @@ from .extensions import db
 from passlib.apps import custom_app_context as pwd_context
 from utils import timestamp2Datastring
 
+
 class User(db.Model):
     __tablename__ = 'user'
     STATUS_MAP = {0: "unverified", 1: "normal", 2: "abandon"}
@@ -29,7 +30,7 @@ class User(db.Model):
         self.token = md5(str(uuid.uuid1()).encode('utf-8')).hexdigest()
         self.is_login = False
         self.subscribe_type = None
-        self.subscribe_content = json.dumps({'content':[]})
+        self.subscribe_content = json.dumps({'content': []})
         self.verification_code = md5(str(
             uuid.uuid4()).encode('utf-8')).hexdigest()
         self.status = 0
@@ -47,11 +48,11 @@ class User(db.Model):
 
     def getStatus(self):
         return (self.status, self.STATUS_MAP.get(self.status, 'unverified'))
-    
+
     def to_json(self):
         res = {}
         for item in self.__dict__.keys():
-            if item in ['username','email', 'token']:
+            if item in ['username', 'email', 'token']:
                 res[item] = self.__dict__[item]
         return res
 
@@ -76,29 +77,26 @@ class PhishingInfo(db.Model):
 
     def __repr__(self) -> str:
         return "<PhishingInfo: ip-%r, domain-%r>" % (self.ip, self.domain)
-    
+
     def to_json_simple(self):
         res = {}
         for item in self.__dict__.keys():
-            if item in ['ip','timestamp','domain']:
+            if item in ['ip', 'timestamp', 'domain']:
                 res[item] = self.__dict__[item]
         return res
-    
+
     def to_json(self):
         res = {}
         for item in self.__dict__.keys():
             if item != '_sa_instance_state':
                 res[item] = self.__dict__[item]
         return res
-    
+
 
 class C2Info(db.Model):
     __tablename__ = 'c2_info'
-    id = db.Column('c2_id',
-                   db.Integer,
-                   primary_key=True,
-                   autoincrement=True)
-    
+    id = db.Column('c2_id', db.Integer, primary_key=True, autoincrement=True)
+
     domain = db.Column(db.String(256))
     ioc = db.Column(db.String(256))
     uri_path = db.Column(db.String(256))
@@ -114,15 +112,16 @@ class C2Info(db.Model):
         self.source = source
 
     def __repr__(self) -> str:
-        return "<C2Info: ioc-%r, domain-%r, uri_path-%r>" % (self.ioc, self.domain, self.uri_path)
-    
+        return "<C2Info: ioc-%r, domain-%r, uri_path-%r>" % (
+            self.ioc, self.domain, self.uri_path)
+
     def to_json_simple(self):
         res = {}
         for item in self.__dict__.keys():
-            if item in ['ioc','domain','timestamp']:
+            if item in ['ioc', 'domain', 'timestamp']:
                 res[item] = self.__dict__[item]
         return res
-    
+
     def to_json(self):
         res = {}
         for item in self.__dict__.keys():
@@ -167,28 +166,25 @@ class BotnetInfo(db.Model):
     def __repr__(self) -> str:
         return "<BotnetInfo: name-%r, ip-%r, port-%r>" % (self.as_name,
                                                           self.ip, self.port)
-    
+
     def to_json(self):
         res = {}
         for item in self.__dict__.keys():
             if item != '_sa_instance_state':
                 res[item] = self.__dict__[item]
         return res
-    
+
     def to_json_simple(self):
         res = {}
         for item in self.__dict__.keys():
-            if item in ['ip_address','port','status','malware']:
+            if item in ['ip_address', 'port', 'status', 'malware']:
                 res[item] = self.__dict__[item]
         return res
 
 
 class IntelligenceTypeInfo(db.Model):
     __tablename__ = 'intelligence_type'
-    id = db.Column('type_id',
-                   db.Integer,
-                   primary_key=True,
-                   autoincrement=True)
+    id = db.Column('type_id', db.Integer, primary_key=True, autoincrement=True)
     name = db.Column(db.String(32))
 
     def to_json(self):
@@ -219,7 +215,10 @@ class DataRecordInfo(db.Model):
                 if item in ['begin_time', 'end_time']:
                     res[item] = timestamp2Datastring(self.__dict__[item])
                 elif item == 'size':
-                    res[item] = str(self.__dict__[item])+'B' if self.__dict__[item] < 1024 else str(self.__dict__[item] // 1024)+'KB'
+                    res[item] = str(
+                        self.__dict__[item]
+                    ) + 'B' if self.__dict__[item] < 1024 else str(
+                        self.__dict__[item] // 1024) + 'KB'
                 else:
                     res[item] = self.__dict__[item]
         return res
@@ -244,10 +243,7 @@ class DataSourceInfo(db.Model):
 
 class APILogInfo(db.Model):
     __tablename__ = 'api_log'
-    id = db.Column('log_id',
-                   db.Integer,
-                   primary_key=True,
-                   autoincrement=True)
+    id = db.Column('log_id', db.Integer, primary_key=True, autoincrement=True)
     create_time = db.Column(db.Integer)
     ip_address = db.Column(db.String(128))
     url = db.Column(db.String(256))

@@ -5,7 +5,8 @@ import json
 import uuid
 import sys
 from hashlib import md5
-from ..models import PhishingInfo, BotnetInfo, C2Info, APILogInfo, DataSourceInfo
+from ..models import (PhishingInfo, BotnetInfo, C2Info, APILogInfo,
+                      DataSourceInfo)
 from flask_restful import Resource
 from flask import jsonify, request, current_app
 from sqlalchemy import and_
@@ -21,7 +22,8 @@ class VerificationAPI(Resource):
 
     def post(self):
         token = str(request.args.get('token'))
-        current_app.logger.info('ip-{} token-{}'.format(request.remote_addr,token))
+        current_app.logger.info('ip-{} token-{}'.format(
+            request.remote_addr, token))
         if token:
             r = redis.Redis(connection_pool=redis_pool)
             if r.sismember('yonglong_tokens', token):
@@ -30,15 +32,9 @@ class VerificationAPI(Resource):
                 r.hset('yinglong_authentication', token, secret)
                 res = {'code': 200, 'secret': secret}
             else:
-                res = {
-                    'code': 301,
-                    "msg": 'Incorrect token entered.'
-                }
+                res = {'code': 301, "msg": 'Incorrect token entered.'}
         else:
-            res = {
-                'code': 300,
-                "msg": 'There is no "token" parameter.'
-            }
+            res = {'code': 300, "msg": 'There is no "token" parameter.'}
         return jsonify(res)
 
 
@@ -90,13 +86,18 @@ class BasicAPI(Resource):
     def setCodeAndMessage(self, code, msg):
         self.CODE = code
         self.MESSAGE = msg
-    
+
     def infoLog(self, token, url, ip_address, parameters, result):
-        current_app.logger.info('ip-{} parameters-{} result-{}'.format(ip_address,parameters,result))
-        log = APILogInfo(token=token, url=url, ip_address=ip_address, parameters=parameters, result=result)
+        current_app.logger.info('ip-{} parameters-{} result-{}'.format(
+            ip_address, parameters, result))
+        log = APILogInfo(token=token,
+                         url=url,
+                         ip_address=ip_address,
+                         parameters=parameters,
+                         result=result)
         db.session.add(log)
         db.session.commit()
-    
+
     def errorLog(self):
         current_app.logger.error(sys.exc_info())
 
@@ -116,17 +117,11 @@ class DataSourceAPI(BasicAPI):
                              signature=signature):
             ds = DataSourceInfo.query.all()
             result = [item.to_json() for item in ds]
-            res = {
-                'result':result,
-                'msg': self.MESSAGE,
-                'code': self.CODE
-            }
+            res = {'result': result, 'msg': self.MESSAGE, 'code': self.CODE}
         else:
-            res = {
-                'msg': self.MESSAGE,
-                'code': self.CODE
-            }
-        self.infoLog(token, request.path, request.headers['X-Forwarded-For'], json.dumps(parameters), json.dumps(res))
+            res = {'msg': self.MESSAGE, 'code': self.CODE}
+        self.infoLog(token, request.path, request.headers['X-Forwarded-For'],
+                     json.dumps(parameters), json.dumps(res))
         return jsonify(res)
 
 
@@ -167,7 +162,8 @@ class PhishingAPI(BasicAPI):
             }
         else:
             res = {'code': self.CODE, 'msg': self.MESSAGE}
-        self.infoLog(token, request.path, request.headers['X-Forwarded-For'], json.dumps(parameters), json.dumps(res))
+        self.infoLog(token, request.path, request.headers['X-Forwarded-For'],
+                     json.dumps(parameters), json.dumps(res))
         return jsonify(res)
 
     def updateCache(self, token) -> None:
@@ -250,7 +246,8 @@ class BotnetAPI(BasicAPI):
             }
         else:
             res = {'code': self.CODE, 'msg': self.MESSAGE}
-        self.infoLog(token, request.path, request.headers['X-Forwarded-For'], json.dumps(parameters), json.dumps(res))
+        self.infoLog(token, request.path, request.headers['X-Forwarded-For'],
+                     json.dumps(parameters), json.dumps(res))
         return jsonify(res)
 
     def updateCache(self, token) -> None:
@@ -278,8 +275,7 @@ class BotnetAPI(BasicAPI):
         bt = int(time.mktime(time.strptime(str(date), '%Y-%m-%d')))
         et = bt + 24 * 3600
         botnet = BotnetInfo.query.filter(
-            and_(BotnetInfo.timestamp >= bt,
-                 BotnetInfo.timestamp < et)).all()
+            and_(BotnetInfo.timestamp >= bt, BotnetInfo.timestamp < et)).all()
         result = [item.to_json() for item in botnet]
         return result
 
@@ -291,6 +287,7 @@ class BotnetAPI(BasicAPI):
         botnet = commonQueryOrder(BotnetInfo, BotnetInfo.timestamp, quantity)
         result = [item.to_json() for item in botnet]
         return result
+
 
 class C2API(BasicAPI):
     VALIDITY = 'yinglong_user_validity_c2'
@@ -329,7 +326,8 @@ class C2API(BasicAPI):
             }
         else:
             res = {'code': self.CODE, 'msg': self.MESSAGE}
-        self.infoLog(token, request.path, request.headers['X-Forwarded-For'], json.dumps(parameters), json.dumps(res))
+        self.infoLog(token, request.path, request.headers['X-Forwarded-For'],
+                     json.dumps(parameters), json.dumps(res))
         return jsonify(res)
 
     def updateCache(self, token) -> None:
@@ -337,16 +335,16 @@ class C2API(BasicAPI):
         if r.hget(self.VALIDITY, token) is not None:
             times = json.loads(r.hget(self.VALIDITY, token)).get('times')
             r.hset(self.VALIDITY, token,
-                json.dumps({
-                    'timestamp': time.time(),
-                    'times': times + 1
-                }))
+                   json.dumps({
+                       'timestamp': time.time(),
+                       'times': times + 1
+                   }))
         else:
             r.hset(self.VALIDITY, token,
-                json.dumps({
-                    'timestamp': time.time(),
-                    'times': 0
-                }))
+                   json.dumps({
+                       'timestamp': time.time(),
+                       'times': 0
+                   }))
 
     def getTodayData(self) -> dict:
         today = str(datetime.date.today())
@@ -355,8 +353,7 @@ class C2API(BasicAPI):
         if r.hget('yinglong_c2', today) is not None:
             result = json.loads(r.hget('yinglong_c2', today))
         else:
-            c2 = commonQueryCompare(C2Info, C2Info.timestamp, t,
-                                        '>')
+            c2 = commonQueryCompare(C2Info, C2Info.timestamp, t, '>')
             result = [item.to_json() for item in c2]
         return result
 
@@ -364,8 +361,7 @@ class C2API(BasicAPI):
         bt = int(time.mktime(time.strptime(str(date), '%Y-%m-%d')))
         et = bt + 24 * 3600
         c2 = C2Info.query.filter(
-            and_(C2Info.timestamp >= bt,
-                 C2Info.timestamp < et)).all()
+            and_(C2Info.timestamp >= bt, C2Info.timestamp < et)).all()
         result = [item.to_json() for item in c2]
         return result
 
