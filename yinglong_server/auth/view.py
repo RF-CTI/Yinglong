@@ -1,10 +1,12 @@
 import datetime
 import json
-from flask import jsonify, request
+import time
+from flask import jsonify, request, g
 from ..models import db, User, IntelligenceTypeInfo, DataSourceInfo
 from yinglong_backend.celery_task import sendEmail
 from flask_restful import Resource
 from config import SITE_DOMAIN
+from ..common import LANGERAGE_MAP
 
 
 class BasicAPI(Resource):
@@ -37,11 +39,7 @@ class RegisterVerificationAPI(BasicAPI):
                 else:
                     user.status = 1
                     db.session.commit()
-        return jsonify({
-            'code': self.CODE,
-            'msg': self.MESSAGE,
-            'username': username
-        })
+        return jsonify({'code': self.CODE, 'msg': self.MESSAGE, 'username': username})
 
 
 class RegisterAPI(BasicAPI):
@@ -71,11 +69,7 @@ class RegisterAPI(BasicAPI):
                                      user.verification_code,
                                      str(datetime.date.today())), [user.email],
                     '')
-        return jsonify({
-            'code': self.CODE,
-            'msg': self.MESSAGE,
-            'username': username
-        })
+        return jsonify({'code': self.CODE, 'msg': self.MESSAGE,'username':username})
 
 
 class LoginAPI(BasicAPI):
@@ -95,16 +89,14 @@ class LoginAPI(BasicAPI):
                 self.setCodeAndMessage(301, "E-mail or password is wrong!")
             else:
                 user.is_login = True
+                user.last_login = int(time.time())
                 db.session.commit()
         return jsonify({
             "code": self.CODE,
             "msg": self.MESSAGE,
             "id": user.id,
             'username': user.username
-        } if self.CODE == 200 else {
-            'code': self.CODE,
-            'msg': self.MESSAGE
-        })
+        } if self.CODE == 200 else {'code':self.CODE,'msg':self.MESSAGE})
 
     def verify_password(self, email, password):
         user = User.query.filter_by(email=email).first()
@@ -161,22 +153,19 @@ class GetUserSubscribeAPI(BasicAPI):
                 res = {}
                 sub_content = json.loads(user.subscribe_content)['content']
                 for itype in itypes:
-                    sources = DataSourceInfo.query.filter_by(
-                        intelligence_type=itype.id).all()
+                    sources = DataSourceInfo.query.filter_by(intelligence_type=itype.id).all()
                     l = []
                     for source in sources:
                         data = source.to_json()
-                        data['subscribe'] = True if str(
-                            data['id']) in sub_content else False
+                        data['subscribe'] = True if str(data['id']) in sub_content else False
                         l.append(data)
-                    res[itype.name] = l
+                    res[itype.name] = {'data':l,'name_zh': LANGERAGE_MAP.get(itype.name)}
                 return jsonify({
                     'code': self.CODE,
                     'msg': self.MESSAGE,
                     'result': res
                 })
         return jsonify({'code': self.CODE, 'msg': self.MESSAGE})
-
 
 class GetUserToken(BasicAPI):
 
@@ -194,4 +183,4 @@ class GetUserToken(BasicAPI):
                     'msg': self.MESSAGE,
                     'token': user.token
                 })
-        return jsonify({'code': self.CODE, 'msg': self.MESSAGE})
+        return jsonify({'code':self.CODE,'msg':self.MESSAGE})

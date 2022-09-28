@@ -12,7 +12,8 @@ from utils import uploadFile, encodeBase64, getTodayTimestamp
 def saveWeekDataRecord():
     INTELLIGENCE_TYPES = {
         "phishing": ('phishing_info', 1),
-        "botnet": ('botnet_info', 2)
+        "botnet": ('botnet_info', 2),
+        "c2": ('c2_info', 3)
     }
     et = getTodayTimestamp()
     bt = et - 24 * 3600 * 7

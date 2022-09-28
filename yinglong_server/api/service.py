@@ -3,11 +3,13 @@ import datetime
 import redis
 import json
 import uuid
+import sys
 from hashlib import md5
-from ..models import PhishingInfo, BotnetInfo
+from ..models import PhishingInfo, BotnetInfo, C2Info, APILogInfo, DataSourceInfo
 from flask_restful import Resource
-from flask import jsonify, request
+from flask import jsonify, request, current_app
 from sqlalchemy import and_
+from ..extensions import db
 from utils import (commonQueryOrder, commonQueryCompare, getNoNoneItem)
 
 redis_pool = redis.ConnectionPool(host='127.0.0.1',
@@ -19,27 +21,30 @@ class VerificationAPI(Resource):
 
     def post(self):
         token = str(request.args.get('token'))
+        current_app.logger.info('ip-{} token-{}'.format(request.remote_addr,token))
         if token:
             r = redis.Redis(connection_pool=redis_pool)
             if r.sismember('yonglong_tokens', token):
                 secret = md5('-'.join([token, str(uuid.uuid1())
                                        ]).encode('utf-8')).hexdigest()
                 r.hset('yinglong_authentication', token, secret)
-                return jsonify({'code': 200, 'secret': secret})
+                res = {'code': 200, 'secret': secret}
             else:
-                return jsonify({
+                res = {
                     'code': 301,
                     "msg": 'Incorrect token entered.'
-                })
+                }
         else:
-            return jsonify({
+            res = {
                 'code': 300,
                 "msg": 'There is no "token" parameter.'
-            })
+            }
+        return jsonify(res)
 
 
 class BasicAPI(Resource):
     VALIDITY = ''
+    INTELLIGENCE_TYPE = None
     MESSAGE = 'Success.'
     CODE = 200
 
@@ -85,22 +90,60 @@ class BasicAPI(Resource):
     def setCodeAndMessage(self, code, msg):
         self.CODE = code
         self.MESSAGE = msg
+    
+    def infoLog(self, token, url, ip_address, parameters, result):
+        current_app.logger.info('ip-{} parameters-{} result-{}'.format(ip_address,parameters,result))
+        log = APILogInfo(token=token, url=url, ip_address=ip_address, parameters=parameters, result=result)
+        db.session.add(log)
+        db.session.commit()
+    
+    def errorLog(self):
+        current_app.logger.error(sys.exc_info())
+
+
+class DataSourceAPI(BasicAPI):
+
+    def post(self):
+        r = redis.Redis(connection_pool=redis_pool)
+        parameters = json.loads(request.data)
+        token = parameters.get('token')
+        timestamp = parameters.get('timestamp')
+        signature = parameters.get('signature')
+        secret = r.hget('yinglong_authentication', token)
+        if self.verification(token=token,
+                             secert=secret,
+                             timestamp=timestamp,
+                             signature=signature):
+            ds = DataSourceInfo.query.all()
+            result = [item.to_json() for item in ds]
+            res = {
+                'result':result,
+                'msg': self.MESSAGE,
+                'code': self.CODE
+            }
+        else:
+            res = {
+                'msg': self.MESSAGE,
+                'code': self.CODE
+            }
+        self.infoLog(token, request.path, request.headers['X-Forwarded-For'], json.dumps(parameters), json.dumps(res))
+        return jsonify(res)
 
 
 class PhishingAPI(BasicAPI):
     VALIDITY = 'yinglong_user_validity_phishing'
+    INTELLIGENCE_TYPE = 1
 
     def post(self):
         today = datetime.date.today()
         r = redis.Redis(connection_pool=redis_pool)
-        data = json.loads(request.data)
-        token = data.get('token')
-        date = data.get('date')
-        quantity = data.get('quantity')
-        timestamp = data.get('timestamp')
-        signature = data.get('signature')
+        parameters = json.loads(request.data)
+        token = parameters.get('token')
+        date = parameters.get('date')
+        quantity = parameters.get('quantity')
+        timestamp = parameters.get('timestamp')
+        signature = parameters.get('signature')
         secret = r.hget('yinglong_authentication', token)
-        print(token, secret, timestamp, signature)
         if self.verification(token=token,
                              secert=secret,
                              timestamp=timestamp,
@@ -115,15 +158,17 @@ class PhishingAPI(BasicAPI):
             else:
                 result = self.getTodayData()
             self.updateCache(token=token)
-            return jsonify({
+            res = {
                 'result': result,
                 'timestamp': int(time.time()),
                 'total': len(result),
                 'msg': self.MESSAGE,
                 'code': self.CODE
-            })
+            }
         else:
-            return jsonify({'code': self.CODE, 'msg': self.MESSAGE})
+            res = {'code': self.CODE, 'msg': self.MESSAGE}
+        self.infoLog(token, request.path, request.headers['X-Forwarded-For'], json.dumps(parameters), json.dumps(res))
+        return jsonify(res)
 
     def updateCache(self, token) -> None:
         r = redis.Redis(connection_pool=redis_pool)
@@ -170,16 +215,17 @@ class PhishingAPI(BasicAPI):
 
 class BotnetAPI(BasicAPI):
     VALIDITY = 'yinglong_user_validity_botnet'
+    INTELLIGENCE_TYPE = 2
 
     def post(self):
         today = datetime.date.today()
         r = redis.Redis(connection_pool=redis_pool)
-        data = json.loads(request.data)
-        token = data.get('token')
-        date = data.get('date')
-        quantity = data.get('quantity')
-        timestamp = data.get('timestamp')
-        signature = data.get('signature')
+        parameters = json.loads(request.data)
+        token = parameters.get('token')
+        date = parameters.get('date')
+        quantity = parameters.get('quantity')
+        timestamp = parameters.get('timestamp')
+        signature = parameters.get('signature')
         secret = r.hget('yinglong_authentication', token)
         if self.verification(token=token,
                              secert=secret,
@@ -195,15 +241,17 @@ class BotnetAPI(BasicAPI):
             else:
                 result = self.getTodayData()
             self.updateCache(token=token)
-            return jsonify({
+            res = {
                 'result': result,
                 'timestamp': int(time.time()),
                 'total': len(result),
                 'code': self.CODE,
                 'msg': self.MESSAGE
-            })
+            }
         else:
-            return jsonify({'code': self.CODE, 'msg': self.MESSAGE})
+            res = {'code': self.CODE, 'msg': self.MESSAGE}
+        self.infoLog(token, request.path, request.headers['X-Forwarded-For'], json.dumps(parameters), json.dumps(res))
+        return jsonify(res)
 
     def updateCache(self, token) -> None:
         r = redis.Redis(connection_pool=redis_pool)
@@ -221,7 +269,7 @@ class BotnetAPI(BasicAPI):
         if r.hget('yinglong_botnet', today) is not None:
             result = json.loads(r.hget('yinglong_botnet', today))
         else:
-            botnet = commonQueryCompare(BotnetInfo, BotnetInfo.last_online, t,
+            botnet = commonQueryCompare(BotnetInfo, BotnetInfo.timestamp, t,
                                         '>')
             result = [item.to_json() for item in botnet]
         return result
@@ -230,8 +278,8 @@ class BotnetAPI(BasicAPI):
         bt = int(time.mktime(time.strptime(str(date), '%Y-%m-%d')))
         et = bt + 24 * 3600
         botnet = BotnetInfo.query.filter(
-            and_(BotnetInfo.last_online >= bt,
-                 BotnetInfo.last_online < et)).all()
+            and_(BotnetInfo.timestamp >= bt,
+                 BotnetInfo.timestamp < et)).all()
         result = [item.to_json() for item in botnet]
         return result
 
@@ -240,6 +288,92 @@ class BotnetAPI(BasicAPI):
             quantity = 10000
         if quantity < 0:
             quantity = 0
-        botnet = commonQueryOrder(BotnetInfo, BotnetInfo.last_online, quantity)
+        botnet = commonQueryOrder(BotnetInfo, BotnetInfo.timestamp, quantity)
         result = [item.to_json() for item in botnet]
+        return result
+
+class C2API(BasicAPI):
+    VALIDITY = 'yinglong_user_validity_c2'
+    INTELLIGENCE_TYPE = 3
+
+    def post(self):
+        today = datetime.date.today()
+        r = redis.Redis(connection_pool=redis_pool)
+        parameters = json.loads(request.data)
+        token = parameters.get('token')
+        date = parameters.get('date')
+        quantity = parameters.get('quantity')
+        timestamp = parameters.get('timestamp')
+        signature = parameters.get('signature')
+        secret = r.hget('yinglong_authentication', token)
+        if self.verification(token=token,
+                             secert=secret,
+                             timestamp=timestamp,
+                             signature=signature):
+            index, content = getNoNoneItem([date, quantity])
+            if content == str(today):
+                result = self.getTodayData()
+            elif index == 0:
+                result = self.getDateData(content)
+            elif index == 1:
+                result = self.getQuantityData(content)
+            else:
+                result = self.getTodayData()
+            self.updateCache(token=token)
+            res = {
+                'result': result,
+                'timestamp': int(time.time()),
+                'total': len(result),
+                'code': self.CODE,
+                'msg': self.MESSAGE
+            }
+        else:
+            res = {'code': self.CODE, 'msg': self.MESSAGE}
+        self.infoLog(token, request.path, request.headers['X-Forwarded-For'], json.dumps(parameters), json.dumps(res))
+        return jsonify(res)
+
+    def updateCache(self, token) -> None:
+        r = redis.Redis(connection_pool=redis_pool)
+        if r.hget(self.VALIDITY, token) is not None:
+            times = json.loads(r.hget(self.VALIDITY, token)).get('times')
+            r.hset(self.VALIDITY, token,
+                json.dumps({
+                    'timestamp': time.time(),
+                    'times': times + 1
+                }))
+        else:
+            r.hset(self.VALIDITY, token,
+                json.dumps({
+                    'timestamp': time.time(),
+                    'times': 0
+                }))
+
+    def getTodayData(self) -> dict:
+        today = str(datetime.date.today())
+        t = time.mktime(time.strptime(str(today), '%Y-%m-%d'))
+        r = redis.Redis(connection_pool=redis_pool)
+        if r.hget('yinglong_c2', today) is not None:
+            result = json.loads(r.hget('yinglong_c2', today))
+        else:
+            c2 = commonQueryCompare(C2Info, C2Info.timestamp, t,
+                                        '>')
+            result = [item.to_json() for item in c2]
+        return result
+
+    def getDateData(self, date) -> dict:
+        bt = int(time.mktime(time.strptime(str(date), '%Y-%m-%d')))
+        et = bt + 24 * 3600
+        c2 = C2Info.query.filter(
+            and_(C2Info.timestamp >= bt,
+                 C2Info.timestamp < et)).all()
+        result = [item.to_json() for item in c2]
+        return result
+
+    def getQuantityData(self, quantity) -> dict:
+        if quantity > 10000:
+            quantity = 10000
+        if quantity < 0:
+            quantity = 0
+        c2 = commonQueryOrder(C2Info, C2Info.timestamp, quantity)
+        result = [item.to_json() for item in c2]
         return result
