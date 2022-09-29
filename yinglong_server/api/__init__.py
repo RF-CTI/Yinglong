@@ -1,7 +1,7 @@
 from flask import Blueprint
 from flask_restful import Api
 from .service import PhishingAPI, BotnetAPI, VerificationAPI, C2API, DataSourceAPI
-from .views import DaliyReportAPI, DataRecordAPI, GetDataAPI,SubscribeAPI
+from .views import DaliyReportAPI, DataRecordAPI, GetDataAPI
 
 api_bp = Blueprint('api_bp', __name__)
 api = Api()
@@ -16,4 +16,3 @@ api.add_resource(DataSourceAPI, '/datasource/')
 api.add_resource(DaliyReportAPI, '/daliyreport/')
 api.add_resource(DataRecordAPI, '/datarecord/')
 api.add_resource(GetDataAPI, '/getdata/')
-api.add_resource(SubscribeAPI, '/subscribe/')

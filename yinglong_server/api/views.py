@@ -90,27 +90,3 @@ class DataRecordAPI(BasicAPI):
                 'name_zh': LANGERAGE_MAP.get(item.name)
             }
         return jsonify({'result': result})
-
-
-class SubscribeAPI(BasicAPI):
-
-    def post(self):
-        data = json.loads(request.data)
-        username = data.get('username')
-        sc_id = data.get('id')
-        if username and sc_id:
-            user = db.session.query(User).filter(
-                User.username == username).first()
-            if user.subscribe_content is None or user.subscribe_content == '':
-                ct = []
-            else:
-                ct = json.loads(user.subscribe_content)['content']
-            if sc_id in ct:
-                ct.remove(sc_id)
-            else:
-                ct.append(sc_id)
-            user.subscribe_content = json.dumps({"content": ct})
-            db.session.commit()
-            return jsonify({'code': 200, 'msg': 'ok'})
-        else:
-            return jsonify({'code': 400, 'msg': 'faild'})

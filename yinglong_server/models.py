@@ -268,5 +268,40 @@ class APILogInfo(db.Model):
         return res
 
 
+class UserLogInfo(db.Model):
+    __tablename__ = 'user_log'
+    action_choices = {
+        0: '',
+        1: '登录',
+        2: '退出登录',
+        3: '订阅',
+        4: '取消订阅',
+        5: '下载'
+    }
+    id = db.Column('log_id', db.Integer, primary_key=True, autoincrement=True)
+    create_time = db.Column(db.Integer)
+    content = db.Column(db.String(512))
+    ip_address = db.Column(db.String(128))
+    user_id = db.Column(db.ForeignKey('user.user_id'))
+    action = db.Column(db.Integer)
+
+    def __init__(self, user_id, ip_address, content, action) -> None:
+        super().__init__()
+        self.action = action
+        self.user_id = user_id
+        self.ip_address = ip_address
+        self.content = content
+        self.create_time = int(time.time())
+
+    def to_json(self):
+        res = {}
+        for item in self.__dict__.keys():
+            if item != '_sa_instance_state':
+                res[item] = self.__dict__[item]
+            elif item == 'action':
+                res[item] = self.action_choices[self.__dict__[item]]
+        return res
+
+
 if __name__ == '__main__':
     db.create_all()

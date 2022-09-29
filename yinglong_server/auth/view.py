@@ -2,7 +2,7 @@ import datetime
 import json
 import time
 from flask import jsonify, request, g
-from ..models import db, User, IntelligenceTypeInfo, DataSourceInfo
+from ..models import db, User, IntelligenceTypeInfo, DataSourceInfo, UserLogInfo
 from yinglong_backend.celery_task import sendEmail
 from flask_restful import Resource
 from config import SITE_DOMAIN
@@ -98,6 +98,8 @@ class LoginAPI(BasicAPI):
             else:
                 user.is_login = True
                 user.last_login = int(time.time())
+                log = UserLogInfo(user_id=user.id,ip_address=request.headers['X-Forwarded-For'],content='登陆成功',action=1)
+                db.session.add(log)
                 db.session.commit()
         return jsonify({
             "code": self.CODE,
@@ -129,6 +131,9 @@ class LogoutAPI(BasicAPI):
                 self.setCodeAndMessage(301, "Username does not exist!")
             else:
                 user.is_login = False
+                log = UserLogInfo(user_id=user.id,ip_address=request.headers['X-Forwarded-For'],content='退出成功',action=2)
+                db.session.add(log)
+                db.session.commit()
         return jsonify({'code': self.CODE, 'msg': self.MESSAGE})
 
 
@@ -146,6 +151,34 @@ class UserInfoAPI(BasicAPI):
             else:
                 return jsonify(user.to_json())
         return jsonify({'code': self.CODE, 'msg': self.MESSAGE})
+
+
+class SubscribeAPI(BasicAPI):
+
+    def post(self):
+        data = json.loads(request.data)
+        username = data.get('username')
+        sc_id = data.get('id')
+        if username and sc_id:
+            user = db.session.query(User).filter(
+                User.username == username).first()
+            if user.subscribe_content is None or user.subscribe_content == '':
+                ct = []
+            else:
+                ct = json.loads(user.subscribe_content)['content']
+            source = DataSourceInfo.query.filter_by(id=sc_id).first()
+            if sc_id in ct:
+                ct.remove(sc_id)
+                log = UserLogInfo(user_id=user.id,ip_address=request.headers['X-Forwarded-For'],content=source.name,action=4)
+            else:
+                log = UserLogInfo(user_id=user.id,ip_address=request.headers['X-Forwarded-For'],content=source.name,action=3)
+                ct.append(sc_id)
+            user.subscribe_content = json.dumps({"content": ct})
+            db.session.add(log)
+            db.session.commit()
+            return jsonify({'code': 200, 'msg': 'ok'})
+        else:
+            return jsonify({'code': 400, 'msg': 'faild'})
 
 
 class GetUserSubscribeAPI(BasicAPI):
@@ -184,7 +217,7 @@ class GetUserSubscribeAPI(BasicAPI):
         return jsonify({'code': self.CODE, 'msg': self.MESSAGE})
 
 
-class GetUserToken(BasicAPI):
+class GetUserTokenAPI(BasicAPI):
 
     def get(self):
         username = request.args.get('username')
@@ -200,4 +233,22 @@ class GetUserToken(BasicAPI):
                     'msg': self.MESSAGE,
                     'token': user.token
                 })
+        return jsonify({'code': self.CODE, 'msg': self.MESSAGE})
+
+
+class DownloadSourceAPI(BasicAPI):
+
+    def post(self):
+        username = request.args.get('username')
+        hashCode = request.args.get('hash')
+        if username is None:
+            self.setCodeAndMessage(300, "Missing required parameter!")
+        else:
+            user = User.query.filter_by(username=username).first()
+            if user is None:
+                self.setCodeAndMessage(301, "Username does not exist!")
+            else:
+                log = UserLogInfo(user_id=user.id,ip_address=request.headers['X-Forwarded-For'],content=hashCode,action=5)
+                db.session.add(log)
+                db.session.commit()
         return jsonify({'code': self.CODE, 'msg': self.MESSAGE})
