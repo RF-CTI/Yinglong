@@ -1,10 +1,8 @@
 import json
-import time
-import uuid
-from hashlib import md5
 from .extensions import db
 from passlib.apps import custom_app_context as pwd_context
-from utils import timestamp2Datastring
+from utils.time_utils import timestamp2Datastring, getTimeInt
+from utils.other_utils import generateMD5Code
 
 
 class User(db.Model):
@@ -27,14 +25,13 @@ class User(db.Model):
         self.username = username
         self.email = email
         self.password = self.hash_password(password)
-        self.token = md5(str(uuid.uuid1()).encode('utf-8')).hexdigest()
+        self.token = generateMD5Code(ctype=1)
         self.is_login = False
         self.subscribe_type = None
         self.subscribe_content = json.dumps({'content': []})
-        self.verification_code = md5(str(
-            uuid.uuid4()).encode('utf-8')).hexdigest()
+        self.verification_code = generateMD5Code(ctype=4)
         self.status = 0
-        self.create_time = int(time.time())
+        self.create_time = getTimeInt()
         self.last_login = 0
 
     def __repr__(self):
@@ -258,7 +255,7 @@ class APILogInfo(db.Model):
         self.url = url
         self.parameters = parameters
         self.result = result
-        self.create_time = int(time.time())
+        self.create_time = getTimeInt()
 
     def to_json(self):
         res = {}
@@ -291,7 +288,7 @@ class UserLogInfo(db.Model):
         self.user_id = user_id
         self.ip_address = ip_address
         self.content = content
-        self.create_time = int(time.time())
+        self.create_time = getTimeInt()
 
     def to_json(self):
         res = {}

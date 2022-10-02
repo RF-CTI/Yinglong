@@ -1,10 +1,8 @@
-import json
-import time
 from flask import jsonify, request
-from ..models import (db, User, DataRecordInfo, IntelligenceTypeInfo,
+from ..models import (DataRecordInfo, IntelligenceTypeInfo,
                       DataSourceInfo)
 from .service import BasicAPI
-from utils import getTodayTimestamp
+from utils.time_utils import getTodayTimestamp, timestamp2Datastring
 from ..common import INTELLIGENCE_SERVER_MAP, LANGERAGE_MAP
 
 
@@ -34,8 +32,7 @@ class DaliyReportAPI(BasicAPI):
             "total":
             total,
             "last_update":
-            time.strftime("%Y-%m-%d %H:%M:%S",
-                          time.localtime(float(last_update))),
+            timestamp2Datastring(last_update),
             "collected_source":
             ', '.join([
                 LANGERAGE_MAP.get(key)

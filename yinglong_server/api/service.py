@@ -1,17 +1,14 @@
-import time
-import datetime
 import redis
 import json
-import uuid
-import sys
-from hashlib import md5
 from ..models import (PhishingInfo, BotnetInfo, C2Info, APILogInfo,
                       DataSourceInfo)
 from flask_restful import Resource
 from flask import jsonify, request, current_app
 from sqlalchemy import and_
 from ..extensions import db
-from utils import (commonQueryOrder, commonQueryCompare, getNoNoneItem)
+from utils.db_utils import commonQueryOrder, commonQueryCompare
+from utils.other_utils import getNoNoneItem, generateSecret, getErrorMessage, getMD5Code
+from utils.time_utils import (getToday, getTime, getTodayTimestamp, getDateTimestamp, getTodayString)
 
 redis_pool = redis.ConnectionPool(host='127.0.0.1',
                                   port=6379,
@@ -27,8 +24,7 @@ class VerificationAPI(Resource):
         if token:
             r = redis.Redis(connection_pool=redis_pool)
             if r.sismember('yonglong_tokens', token):
-                secret = md5('-'.join([token, str(uuid.uuid1())
-                                       ]).encode('utf-8')).hexdigest()
+                secret = getMD5Code('-'.join([token, generateSecret()]))
                 r.hset('yinglong_authentication', token, secret)
                 res = {'code': 200, 'secret': secret}
             else:
@@ -51,8 +47,7 @@ class BasicAPI(Resource):
         if not token or not secert or not timestamp or not signature:
             self.setCodeAndMessage(300, 'Missing required parameter!')
             return False
-        elif md5('-'.join([token, secert, str(timestamp)
-                           ]).encode('utf-8')).hexdigest() == signature:
+        elif getMD5Code('-'.join([token, secert, str(timestamp)])) == signature:
             return True  # self.detectionValidity(token=token)
         else:
             self.setCodeAndMessage(301, 'Verification failed!')
@@ -64,15 +59,15 @@ class BasicAPI(Resource):
         if validty is None:
             r.hset(self.VALIDITY, token,
                    json.dumps({
-                       'timestamp': time.time(),
+                       'timestamp': getTime(),
                        'times': 0
                    }))
             return True
-        elif time.time() - json.loads(validty).get(
+        elif getTime() - json.loads(validty).get(
                 'timestamp') >= 20 * 60 and json.loads(validty).get(
                     'times') + 1 <= 50:
             return True
-        elif time.time() - json.loads(validty).get('timestamp') < 20 * 60:
+        elif getTime() - json.loads(validty).get('timestamp') < 20 * 60:
             self.setCodeAndMessage(
                 302,
                 'The request is too frequent and can only be requested once within 20 minutes.'
@@ -99,7 +94,7 @@ class BasicAPI(Resource):
         db.session.commit()
 
     def errorLog(self):
-        current_app.logger.error(sys.exc_info())
+        current_app.logger.error(getErrorMessage())
 
 
 class DataSourceAPI(BasicAPI):
@@ -130,7 +125,7 @@ class PhishingAPI(BasicAPI):
     INTELLIGENCE_TYPE = 1
 
     def post(self):
-        today = datetime.date.today()
+        today = getToday()
         r = redis.Redis(connection_pool=redis_pool)
         parameters = json.loads(request.data)
         token = parameters.get('token')
@@ -155,7 +150,7 @@ class PhishingAPI(BasicAPI):
             self.updateCache(token=token)
             res = {
                 'result': result,
-                'timestamp': int(time.time()),
+                'timestamp': int(getTime()),
                 'total': len(result),
                 'msg': self.MESSAGE,
                 'code': self.CODE
@@ -171,14 +166,13 @@ class PhishingAPI(BasicAPI):
         times = json.loads(r.hget(self.VALIDITY, token)).get('times')
         r.hset(self.VALIDITY, token,
                json.dumps({
-                   'timestamp': time.time(),
+                   'timestamp': getTime(),
                    'times': times + 1
                }))
 
     def getTodayData(self) -> dict:
-        today = datetime.date.today()
-        t = int(time.mktime(time.strptime(str(today),
-                                          '%Y-%m-%d'))) - 12 * 60 * 60
+        today = getToday()
+        t = getTodayTimestamp() - 12 * 60 * 60
         r = redis.Redis(connection_pool=redis_pool)
         if r.hget('yinglong_phishing', str(today)) is not None:
             result = json.loads(r.hget('yinglong_phishing', str(today)))
@@ -189,8 +183,7 @@ class PhishingAPI(BasicAPI):
         return result
 
     def getDateData(self, date) -> dict:
-        bt = int(time.mktime(time.strptime(str(date),
-                                           '%Y-%m-%d'))) - 12 * 60 * 60
+        bt = getDateTimestamp(date) - 12 * 60 * 60
         et = bt + 24 * 3600
         phishing = PhishingInfo.query.filter(
             and_(PhishingInfo.timestamp >= bt,
@@ -214,7 +207,7 @@ class BotnetAPI(BasicAPI):
     INTELLIGENCE_TYPE = 2
 
     def post(self):
-        today = datetime.date.today()
+        today = getToday()
         r = redis.Redis(connection_pool=redis_pool)
         parameters = json.loads(request.data)
         token = parameters.get('token')
@@ -239,7 +232,7 @@ class BotnetAPI(BasicAPI):
             self.updateCache(token=token)
             res = {
                 'result': result,
-                'timestamp': int(time.time()),
+                'timestamp': int(getTime()),
                 'total': len(result),
                 'code': self.CODE,
                 'msg': self.MESSAGE
@@ -255,13 +248,13 @@ class BotnetAPI(BasicAPI):
         times = json.loads(r.hget(self.VALIDITY, token)).get('times')
         r.hset(self.VALIDITY, token,
                json.dumps({
-                   'timestamp': time.time(),
+                   'timestamp': getTime(),
                    'times': times + 1
                }))
 
     def getTodayData(self) -> dict:
-        today = str(datetime.date.today())
-        t = time.mktime(time.strptime(str(today), '%Y-%m-%d'))
+        today = getTodayString()
+        t = getTodayTimestamp()
         r = redis.Redis(connection_pool=redis_pool)
         if r.hget('yinglong_botnet', today) is not None:
             result = json.loads(r.hget('yinglong_botnet', today))
@@ -272,7 +265,7 @@ class BotnetAPI(BasicAPI):
         return result
 
     def getDateData(self, date) -> dict:
-        bt = int(time.mktime(time.strptime(str(date), '%Y-%m-%d')))
+        bt = getDateTimestamp(date)
         et = bt + 24 * 3600
         botnet = BotnetInfo.query.filter(
             and_(BotnetInfo.timestamp >= bt, BotnetInfo.timestamp < et)).all()
@@ -294,7 +287,7 @@ class C2API(BasicAPI):
     INTELLIGENCE_TYPE = 3
 
     def post(self):
-        today = datetime.date.today()
+        today = getToday()
         r = redis.Redis(connection_pool=redis_pool)
         parameters = json.loads(request.data)
         token = parameters.get('token')
@@ -319,7 +312,7 @@ class C2API(BasicAPI):
             self.updateCache(token=token)
             res = {
                 'result': result,
-                'timestamp': int(time.time()),
+                'timestamp': int(getTime()),
                 'total': len(result),
                 'code': self.CODE,
                 'msg': self.MESSAGE
@@ -336,19 +329,19 @@ class C2API(BasicAPI):
             times = json.loads(r.hget(self.VALIDITY, token)).get('times')
             r.hset(self.VALIDITY, token,
                    json.dumps({
-                       'timestamp': time.time(),
+                       'timestamp': getTime(),
                        'times': times + 1
                    }))
         else:
             r.hset(self.VALIDITY, token,
                    json.dumps({
-                       'timestamp': time.time(),
+                       'timestamp': getTime(),
                        'times': 0
                    }))
 
     def getTodayData(self) -> dict:
-        today = str(datetime.date.today())
-        t = time.mktime(time.strptime(str(today), '%Y-%m-%d'))
+        today = getTodayString()
+        t = getTodayTimestamp()
         r = redis.Redis(connection_pool=redis_pool)
         if r.hget('yinglong_c2', today) is not None:
             result = json.loads(r.hget('yinglong_c2', today))
@@ -358,7 +351,7 @@ class C2API(BasicAPI):
         return result
 
     def getDateData(self, date) -> dict:
-        bt = int(time.mktime(time.strptime(str(date), '%Y-%m-%d')))
+        bt = getDateTimestamp(date)
         et = bt + 24 * 3600
         c2 = C2Info.query.filter(
             and_(C2Info.timestamp >= bt, C2Info.timestamp < et)).all()

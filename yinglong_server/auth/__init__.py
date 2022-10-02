@@ -1,6 +1,6 @@
 from flask import Blueprint
 from flask_restful import Api
-from .view import (RegisterAPI, LoginAPI, RegisterVerificationAPI, UserInfoAPI, GetUserSubscribeAPI, GetUserTokenAPI, SubscribeAPI)
+from .view import (RegisterAPI, LoginAPI, RegisterVerificationAPI, UserInfoAPI, GetUserSubscribeAPI, GetUserTokenAPI, SubscribeAPI,DownloadSourceAPI)
 
 auth_bp = Blueprint('auth_bp', __name__)
 auth = Api()
@@ -13,3 +13,4 @@ auth.add_resource(UserInfoAPI, '/userinfo/')
 auth.add_resource(GetUserSubscribeAPI, '/getusersubscribe/')
 auth.add_resource(GetUserTokenAPI, '/getusertoken/')
 auth.add_resource(SubscribeAPI, '/subscribe/')
+auth.add_resource(DownloadSourceAPI, '/downloadsource/')

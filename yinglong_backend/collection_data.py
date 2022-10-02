@@ -20,11 +20,12 @@ def collectionPhishData():
         except Exception:
             time.sleep(60)
             continue
-    tmpFilePath = os.path.join(TMP_FILE_DIR, 'phish_score.csv')
+    tmpFilePath = os.path.join(TMP_FILE_DIR,'phish_score.csv')
     checkTmpFilePath()
     with open(tmpFilePath, 'w', encoding='utf-8') as f:
         f.write(response.text)
-    conn = create_engine(DB_URL, encoding='utf8')
+    conn = create_engine(DB_URL,
+                         encoding='utf8')
     df = pd.read_csv(tmpFilePath,
                      names=['timestamp', 'score', 'domain', 'ip'],
                      error_bad_lines=False)
@@ -79,9 +80,10 @@ def collectionBotnetData():
             continue
     data = response.json()
     df = pd.DataFrame(data)
-    df.rename(columns={'last_online': 'timestamp'}, inplace=True)
+    df.rename(columns={'last_online':'timestamp'},inplace=True) 
     sql_cmd = "SELECT * FROM {}".format('botnet_info')
-    conn = create_engine(DB_URL, encoding='utf8')
+    conn = create_engine(DB_URL,
+                         encoding='utf8')
     tdf = pd.read_sql(sql=sql_cmd, con=conn)
     df['first_seen'] = pd.to_datetime(df['first_seen'])
     df['first_seen'] = df['first_seen'].astype('int64') // 1e9
@@ -93,8 +95,8 @@ def collectionBotnetData():
                          df_filter2,
                          on=[
                              'as_name', 'as_number', 'country', 'first_seen',
-                             'hostname', 'ip_address', 'timestamp', 'malware',
-                             'port', 'status'
+                             'hostname', 'ip_address', 'timestamp',
+                             'malware', 'port', 'status'
                          ],
                          how='outer')
     df_filter = df_filter.sort_values(by='timestamp')
@@ -110,7 +112,6 @@ def collectionBotnetData():
         if_exists='append',  # append
         index=None)
 
-
 def collectionC2IntelFeedsData():
     url = 'https://raw.githubusercontent.com/drb-ra/C2IntelFeeds/master/feeds/domainC2swithURL-30day.csv'
     for _ in range(10):
@@ -124,12 +125,13 @@ def collectionC2IntelFeedsData():
     checkTmpFilePath()
     with open(tmpFilePath, 'w', encoding='utf-8') as f:
         f.write(response.text)
-    conn = create_engine(DB_URL, encoding='utf8')
+    conn = create_engine(DB_URL,
+                         encoding='utf8')
     df = pd.read_csv(tmpFilePath,
                      names=['#domain', 'ioc', 'uri_path'],
                      error_bad_lines=False)
     df = df.drop([0], axis=0, inplace=False)
-    df.rename(columns={'#domain': 'domain'}, inplace=True)
+    df.rename(columns={'#domain':'domain'},inplace=True)
     df['timestamp'] = int(time.time())
     df['source'] = 3
     sql_cmd = "SELECT * FROM {};".format('c2_info')
@@ -139,11 +141,7 @@ def collectionC2IntelFeedsData():
     df_filter = pd.merge(df_filter1,
                          df_filter2,
                          on=[
-                             'domain',
-                             'ioc',
-                             'uri_path',
-                             'timestamp',
-                             'source',
+                             'domain', 'ioc', 'uri_path', 'timestamp', 'source',
                          ],
                          how='outer')
     df_filter.insert(loc=0,

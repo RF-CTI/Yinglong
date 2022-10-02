@@ -1,12 +1,12 @@
-import datetime
 import json
-import time
-from flask import jsonify, request, g
+from flask import jsonify, request, current_app
 from ..models import db, User, IntelligenceTypeInfo, DataSourceInfo, UserLogInfo
 from yinglong_backend.celery_task import sendEmail
 from flask_restful import Resource
 from config import SITE_DOMAIN
 from ..common import LANGERAGE_MAP
+from utils.time_utils import getTodayString, getTime
+from utils.other_utils import getErrorMessage
 
 
 class BasicAPI(Resource):
@@ -19,6 +19,16 @@ class BasicAPI(Resource):
     def setCodeAndMessage(self, code, message):
         self.CODE = code
         self.MESSAGE = message
+    
+    def infoLog(self, user_id, ip_address, content, action):
+        current_app.logger.info('ip-{} content-{} action-{}'.format(
+            ip_address, content, action))
+        log = UserLogInfo(user_id=user_id,ip_address=ip_address,content=content,action=action)
+        db.session.add(log)
+        db.session.commit()
+
+    def errorLog(self):
+        current_app.logger.error(getErrorMessage())
 
 
 class RegisterVerificationAPI(BasicAPI):
@@ -71,7 +81,7 @@ class RegisterAPI(BasicAPI):
                     "[Yinglong] Please verify your email address.",
                     e_content.format(user.username, user.email, SITE_DOMAIN,
                                      user.verification_code,
-                                     str(datetime.date.today())), [user.email],
+                                     getTodayString()), [user.email],
                     '')
         return jsonify({
             'code': self.CODE,
@@ -97,9 +107,8 @@ class LoginAPI(BasicAPI):
                 self.setCodeAndMessage(301, "E-mail or password is wrong!")
             else:
                 user.is_login = True
-                user.last_login = int(time.time())
-                log = UserLogInfo(user_id=user.id,ip_address=request.headers['X-Forwarded-For'],content='登陆成功',action=1)
-                db.session.add(log)
+                user.last_login = int(getTime())
+                self.infoLog(user_id=user.id,ip_address=request.headers['X-Forwarded-For'],content='登录成功',action=1)
                 db.session.commit()
         return jsonify({
             "code": self.CODE,
@@ -131,8 +140,7 @@ class LogoutAPI(BasicAPI):
                 self.setCodeAndMessage(301, "Username does not exist!")
             else:
                 user.is_login = False
-                log = UserLogInfo(user_id=user.id,ip_address=request.headers['X-Forwarded-For'],content='退出成功',action=2)
-                db.session.add(log)
+                self.infoLog(user_id=user.id,ip_address=request.headers['X-Forwarded-For'],content='退出成功',action=2)
                 db.session.commit()
         return jsonify({'code': self.CODE, 'msg': self.MESSAGE})
 
@@ -169,12 +177,11 @@ class SubscribeAPI(BasicAPI):
             source = DataSourceInfo.query.filter_by(id=sc_id).first()
             if sc_id in ct:
                 ct.remove(sc_id)
-                log = UserLogInfo(user_id=user.id,ip_address=request.headers['X-Forwarded-For'],content=source.name,action=4)
+                self.infoLog(user_id=user.id,ip_address=request.headers['X-Forwarded-For'],content=source.name,action=4)
             else:
-                log = UserLogInfo(user_id=user.id,ip_address=request.headers['X-Forwarded-For'],content=source.name,action=3)
+                self.infoLog(user_id=user.id,ip_address=request.headers['X-Forwarded-For'],content=source.name,action=3)
                 ct.append(sc_id)
             user.subscribe_content = json.dumps({"content": ct})
-            db.session.add(log)
             db.session.commit()
             return jsonify({'code': 200, 'msg': 'ok'})
         else:
@@ -248,7 +255,6 @@ class DownloadSourceAPI(BasicAPI):
             if user is None:
                 self.setCodeAndMessage(301, "Username does not exist!")
             else:
-                log = UserLogInfo(user_id=user.id,ip_address=request.headers['X-Forwarded-For'],content=hashCode,action=5)
-                db.session.add(log)
+                self.infoLog(user_id=user.id,ip_address=request.headers['X-Forwarded-For'],content=hashCode,action=5)
                 db.session.commit()
         return jsonify({'code': self.CODE, 'msg': self.MESSAGE})
