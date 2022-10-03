@@ -1,6 +1,5 @@
 from flask import jsonify, request
-from ..models import (DataRecordInfo, IntelligenceTypeInfo,
-                      DataSourceInfo)
+from ..models import (DataRecordInfo, IntelligenceTypeInfo, DataSourceInfo)
 from .service import BasicAPI
 from utils.time_utils import getTodayTimestamp, timestamp2Datastring
 from ..common import INTELLIGENCE_SERVER_MAP, LANGERAGE_MAP
@@ -81,7 +80,8 @@ class DataRecordAPI(BasicAPI):
         result = {}
         for item in IntelligenceTypeInfo.query.all():
             datas = DataRecordInfo.query.filter(
-                DataRecordInfo.intelligence_type == item.id).all()
+                DataRecordInfo.intelligence_type == item.id).order_by(
+                    DataRecordInfo.end_time.desc()).all()
             result[item.name] = {
                 'data': [data.to_json() for data in datas],
                 'name_zh': LANGERAGE_MAP.get(item.name)
