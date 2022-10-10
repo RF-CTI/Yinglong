@@ -12,6 +12,9 @@ def getNoNoneItem(content: list):
     else:
         return 0, content[0]
 
+def generateVerification() -> str:
+    return str(uuid.uuid4())
+
 def generateSecret() -> str:
     return str(uuid.uuid1())
 

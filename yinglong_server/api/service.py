@@ -1,13 +1,12 @@
 import redis
 import json
-from ..models import (PhishingInfo, BotnetInfo, C2Info, APILogInfo,
-                      DataSourceInfo)
+from ..models import (PhishingInfo, BotnetInfo, C2Info, APILogInfo, DataSourceInfo)
 from flask_restful import Resource
 from flask import jsonify, request, current_app
 from sqlalchemy import and_
 from ..extensions import db
 from utils.db_utils import commonQueryOrder, commonQueryCompare
-from utils.other_utils import getNoNoneItem, generateSecret, getErrorMessage, getMD5Code
+from utils.other_utils import (getNoNoneItem, generateSecret, getErrorMessage, getMD5Code)
 from utils.time_utils import (getToday, getTime, getTodayTimestamp, getDateTimestamp, getTodayString)
 
 redis_pool = redis.ConnectionPool(host='127.0.0.1',

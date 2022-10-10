@@ -6,7 +6,7 @@ from flask_restful import Resource
 from config import SITE_DOMAIN
 from ..common import LANGERAGE_MAP
 from utils.time_utils import getTodayString, getTime
-from utils.other_utils import getErrorMessage
+from utils.other_utils import getErrorMessage, generateVerification
 
 
 class BasicAPI(Resource):
@@ -77,8 +77,8 @@ class RegisterAPI(BasicAPI):
                       encoding='utf-8') as f:
                 e_content = f.read()
                 sendEmail(
-                    "Yinglong", user.username,
-                    "[Yinglong] Please verify your email address.",
+                    "应龙情报共享订阅平台", user.username,
+                    "[Yinglong] 请验证您的邮箱",
                     e_content.format(user.username, user.email, SITE_DOMAIN,
                                      user.verification_code,
                                      getTodayString()), [user.email],
@@ -108,7 +108,7 @@ class LoginAPI(BasicAPI):
             else:
                 user.is_login = True
                 user.last_login = int(getTime())
-                self.infoLog(user_id=user.id,ip_address=request.headers['X-Forwarded-For'],content='登录成功',action=1)
+                self.infoLog(user_id=user.id,ip_address=request.headers['X-Forwarded-For'],content='login',action=1)
                 db.session.commit()
         return jsonify({
             "code": self.CODE,
@@ -140,7 +140,51 @@ class LogoutAPI(BasicAPI):
                 self.setCodeAndMessage(301, "Username does not exist!")
             else:
                 user.is_login = False
-                self.infoLog(user_id=user.id,ip_address=request.headers['X-Forwarded-For'],content='退出成功',action=2)
+                self.infoLog(user_id=user.id,ip_address=request.headers['X-Forwarded-For'],content='logout',action=2)
+                db.session.commit()
+        return jsonify({'code': self.CODE, 'msg': self.MESSAGE})
+
+
+class ForgetPasswd(BasicAPI):
+
+    def post(self):
+        data = json.loads(request.data)
+        email = data.get('email')
+        if email is None:
+            self.setCodeAndMessage(300, "Missing required parameter!")
+        else:
+            user = User.query.filter_by(email=email).first()
+            if user is None:
+                self.setCodeAndMessage(301, "E-mail does not exist!")
+            else:
+                with open('template/forgetpswd_email.txt', 'r', encoding='utf-8') as f:
+                    e_content = f.read()
+                    user.verification_code = generateVerification()
+                    sendEmail(
+                        "应龙情报共享订阅平台", user.username,
+                        "[Yinglong] 您的账户正在修改密码",
+                        e_content.format(user.username, SITE_DOMAIN,
+                                        user.verification_code,
+                                        getTodayString()), [user.email],
+                        '')
+                    db.session.commit()
+        return jsonify({'code': self.CODE, 'msg': self.MESSAGE})
+
+
+class ResetPasswd(BasicAPI):
+
+    def post(self):
+        data = json.loads(request.data)
+        code = data.get('verification_code')
+        pswd = data.get('passwd')
+        if code is None or pswd is None:
+            self.setCodeAndMessage(300, "Missing required parameter!")
+        else:
+            user = User.query.filter_by(verification_code=code).first()
+            if user is None:
+                self.setCodeAndMessage(301, "Verification code does not exist!")
+            else:
+                user.password = user.hash_password(pswd)
                 db.session.commit()
         return jsonify({'code': self.CODE, 'msg': self.MESSAGE})
 

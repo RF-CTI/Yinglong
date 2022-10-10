@@ -80,8 +80,7 @@ class DataRecordAPI(BasicAPI):
         result = {}
         for item in IntelligenceTypeInfo.query.all():
             datas = DataRecordInfo.query.filter(
-                DataRecordInfo.intelligence_type == item.id).order_by(
-                    DataRecordInfo.end_time.desc()).all()
+                DataRecordInfo.intelligence_type == item.id).all()
             result[item.name] = {
                 'data': [data.to_json() for data in datas],
                 'name_zh': LANGERAGE_MAP.get(item.name)

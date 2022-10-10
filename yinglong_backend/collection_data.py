@@ -1,10 +1,12 @@
 import os
 import time
 import requests
+import logging
 import pandas as pd
 from sqlalchemy import create_engine
 from config import TMP_FILE_DIR, DB_URL
 
+logger = logging.getLogger()
 
 def checkTmpFilePath():
     if not os.path.exists(TMP_FILE_DIR):
@@ -53,7 +55,7 @@ def collectionPhishData():
                      column='phishing_id',
                      value=range(len(tdf) + 1,
                                  len(tdf) + len(df_filter) + 1))
-    print("Import {} items in to sql.".format(len(df_filter)))
+    logger.info("Import {} items in to sql.".format(len(df_filter)))
     pd.io.sql.to_sql(
         df_filter,
         "phishing_info",
@@ -104,7 +106,7 @@ def collectionBotnetData():
                      column='botnet_id',
                      value=range(len(tdf) + 1,
                                  len(tdf) + len(df_filter) + 1))
-    print("Import {} items in to sql.".format(len(df_filter)))
+    logger.info("Import {} items in to sql.".format(len(df_filter)))
     pd.io.sql.to_sql(
         df_filter,
         "botnet_info",
@@ -148,7 +150,7 @@ def collectionC2IntelFeedsData():
                      column='c2_id',
                      value=range(len(tdf) + 1,
                                  len(tdf) + len(df_filter) + 1))
-    print("Import {} items in to sql.".format(len(df_filter)))
+    logger.info("Import {} items in to sql.".format(len(df_filter)))
     pd.io.sql.to_sql(
         df_filter,
         "c2_info",

@@ -1,9 +1,9 @@
-Dear {},
+{},
 
-Welcome to Yinglong. To secure your Yinglong account, we just need to verify your email address: {}.
+欢迎使用应龙情报共享订阅平台。为了确保您的账号安全，我们需要验证您的邮箱: {}.
 
-Please click this url to verify: http://{}/verification/?code={}
+请点击此链接进行验证: http://{}/verification/?code={}
 
-Yinglong Team
+应龙运营团队
 
 {}
