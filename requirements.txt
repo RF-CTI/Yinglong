@@ -12,3 +12,4 @@ numpy>=1.9.0
 pandas>=0.22.0
 redis==4.3.1
 requests==2.27.1
+Werkzeug==0.12.2
