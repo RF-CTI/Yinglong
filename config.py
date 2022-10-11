@@ -46,6 +46,9 @@ class BaseConfig(object):
         import logging
         from logging.handlers import RotatingFileHandler
 
+        if not os.path.exists(cls.LOG_PATH):
+            os.mkdir(cls.LOG_PATH)
+
         logFormatStr = '[%(asctime)s] p%(process)s {%(pathname)s:%(lineno)d} %(levelname)s - %(message)s'
         logging.basicConfig(format = logFormatStr, filename = cls.LOG_PATH_GLOBAL, level=logging.INFO)
 
