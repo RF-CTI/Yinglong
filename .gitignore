@@ -129,7 +129,7 @@ dmypy.json
 .pyre/
 
 # my secret file
-config.py
+env.sh
 doc/
 yinglong.sqlite3
 phish_score.csv
