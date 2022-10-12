@@ -14,6 +14,7 @@ This is a project created and maintained by the Redflag organization. This proje
 | --- | --- |
 | /api/phishing/ | Get the phishing website information of the day |
 | /api/botnet/ | Get the botnet information of the day |
+| /api/c2/ | Get the C&C information of the day |
 
 ## Wiki
 
