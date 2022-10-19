@@ -1,11 +1,14 @@
 import os
 from urllib.parse import quote_plus as urlquote
 
+# Flask Setting
+BASE_DIR = os.path.abspath(os.path.dirname(__file__))
+
 # Project Setting
+TMP_FILE_DIR = os.path.join(BASE_DIR, 'tmp')
 SITE_DOMAIN = os.getenv('YINGLONG_SITE_DOMAIN', 'YOUR_SITE_DOMAIN')
 ENVIRONMENT = os.getenv('YINGLONG_ENVIRONMENT',
                         'YOUR_ENVIRONMENT')  # development, testing, product
-TMP_FILE_DIR = './tmp'
 GIT_ACCESS_TOKEN = os.getenv('YINGLONG_GIT_ACCESS_TOKEN',
                              'YOUR_GIT_ACCESS_TOKEN')
 
@@ -35,9 +38,6 @@ DB_TEST_URL = 'mysql+pymysql://{}:{}@{}'.format(MYSQL_USERNAME,
                                                 urlquote(MYSQL_PASSWORD),
                                                 MYSQL_TEST_DATABASE)
 REDIS_URL = os.getenv('YINGLONG_REDIS_URL', 'redis://localhost:6379')
-
-# Flask Setting
-BASE_DIR = os.path.abspath(os.path.dirname(__file__))
 
 
 # 基本配置类
