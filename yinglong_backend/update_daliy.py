@@ -14,45 +14,39 @@ from utils.time_utils import getTodayTimestamp
 logger = logging.getLogger()
 
 INTELLIGENCE_TYPES = {
-    "phishing": ('phishing_info',1),
-    "botnet": ('botnet_info',2),
-    "c2": ('c2_info',3)
+    "phishing": ('phishing_info', 1),
+    "botnet": ('botnet_info', 2),
+    "c2": ('c2_info', 3)
 }
 
 DB_TABLE_LIST = [
-    'intelligence_type',
-    'user',
-    'phishing_info',
-    'botnet_info',
-    'c2_info',
-    'data_record',
-    'data_source',
-    'api_log',
-    'role',
-    'score_history',
-    'station_letter',
-    'user_log'
+    'intelligence_type', 'user', 'phishing_info', 'botnet_info', 'c2_info',
+    'data_record', 'data_source', 'api_log', 'role', 'score_history',
+    'station_letter', 'user_log'
 ]
+
 
 def saveWeekDataRecord():
     et = getTodayTimestamp()
     bt = et - 24 * 3600 * 7
     conn = create_engine(DB_URL, encoding='utf8')
     for key in INTELLIGENCE_TYPES.keys():
-        sql = '''select * from {} where timestamp >= {} and timestamp < {};'''.format(INTELLIGENCE_TYPES[key][0], bt, et)
+        sql = 'select * from {} where timestamp >= {} and timestamp < {};'.format(
+            INTELLIGENCE_TYPES[key][0], bt, et)
         df = pd.read_sql_query(sql=sql, con=conn)
         sql = '''select * from {};'''.format('data_source')
         tdf = pd.read_sql_query(sql=sql, con=conn)
         for _, row in tdf.iterrows():
-            df.loc[df['source']==row['source_id'],['source']] = row['name']
+            df.loc[df['source'] == row['source_id'], ['source']] = row['name']
         bt_str = time.strftime("%Y-%m-%d", time.localtime(bt))
         et_str = time.strftime("%Y-%m-%d", time.localtime(bt))
-        df = df.drop(df.columns[[0]], axis = 1)
+        df = df.drop(df.columns[[0]], axis=1)
         csv_name = '{}_{}_{}_record.csv'.format(key, bt_str, et_str)
-        csv_path = os.path.join(TMP_FILE_DIR,csv_name)
-        df.to_csv(csv_path ,index=False)
+        csv_path = os.path.join(TMP_FILE_DIR, csv_name)
+        df.to_csv(csv_path, index=False)
         with open(csv_path, 'r', encoding='utf-8') as f:
-            sha, size, url = uploadFile(key, tuple(et_str.split('-')[:2]), csv_name, encodeBase64(f.read()))
+            sha, size, url = uploadFile(key, tuple(et_str.split('-')[:2]),
+                                        csv_name, encodeBase64(f.read()))
             sql = '''select * from {};'''.format('data_record')
             tdf = pd.read_sql_query(sql=sql, con=conn)
             dic = [{
@@ -64,9 +58,18 @@ def saveWeekDataRecord():
                 'sha_code': sha,
                 'url': url
             }]
-            ndf = pd.DataFrame(dic,columns=['record_id','begin_time','end_time','size','sha_code','url'])
-            pd.io.sql.to_sql(ndf, "data_record", conn, if_exists='append', index=None)
-            logger.info('Update week data {} has {} items in file {}.'.format(key, len(df), csv_name))
+            ndf = pd.DataFrame(dic,
+                               columns=[
+                                   'record_id', 'begin_time', 'end_time',
+                                   'size', 'sha_code', 'url'
+                               ])
+            pd.io.sql.to_sql(ndf,
+                             "data_record",
+                             conn,
+                             if_exists='append',
+                             index=None)
+            logger.info('Update week data {} has {} items in file {}.'.format(
+                key, len(df), csv_name))
 
 
 def updateTestData():
